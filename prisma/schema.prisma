@@ -1,0 +1,140 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "sqlite"
+  url       = "file:./dev.db"
+}
+
+// Enums removed for SQLite compatibility
+
+model User {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  password  String
+  fullName  String
+  role      String   @default("KIOSK_OPERATOR")
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([role, isActive])
+}
+
+model Floor {
+  id          String       @id @default(cuid())
+  floorCode   String       @unique
+  floorName   String
+  levelNumber Int          @unique
+  /// Spec field: 2dImageURL
+  image2dURL  String?
+  /// Spec field: 3dModelURL
+  model3dURL  String?
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  tenants     Tenant[]
+  pathNodes   PathNode[]
+  floorBlocks FloorBlock[]
+
+  @@index([isActive, levelNumber])
+}
+
+model Category {
+  id           String   @id @default(cuid())
+  categoryCode String   @unique
+  categoryName String
+  iconURL      String?
+  colorHex     String   @default("#2563EB")
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  tenants      Tenant[]
+
+  @@index([isActive])
+}
+
+model Tenant {
+  id             String       @id @default(cuid())
+  tenantCode     String       @unique
+  tenantName     String
+  logoURL        String?
+  description    String?
+  isActive       Boolean      @default(true)
+  categoryId     String
+  floorId        String
+  entranceNodeId String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  category       Category     @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  floor          Floor        @relation(fields: [floorId], references: [id], onDelete: Restrict)
+  entranceNode   PathNode?    @relation("TenantEntrance", fields: [entranceNodeId], references: [id], onDelete: SetNull)
+  floorBlocks    FloorBlock[]
+
+  @@index([floorId, isActive])
+  @@index([categoryId, isActive])
+  @@index([tenantName])
+}
+
+model PathNode {
+  id            String       @id @default(cuid())
+  nodeName      String
+  type          String       @default("WALKWAY")
+  positionX     Float
+  positionY     Float
+  positionZ     Float
+  floorId       String
+  floor         Floor        @relation(fields: [floorId], references: [id], onDelete: Cascade)
+  outgoingEdges PathEdge[]   @relation("EdgeFrom")
+  incomingEdges PathEdge[]   @relation("EdgeTo")
+  tenants       Tenant[]     @relation("TenantEntrance")
+
+  @@index([floorId, type])
+  @@index([nodeName])
+}
+
+model PathEdge {
+  id           String   @id @default(cuid())
+  weight       Float    @default(1)
+  isAccessible Boolean  @default(true)
+  fromNodeId   String
+  toNodeId     String
+  fromNode     PathNode @relation("EdgeFrom", fields: [fromNodeId], references: [id], onDelete: Cascade)
+  toNode       PathNode @relation("EdgeTo", fields: [toNodeId], references: [id], onDelete: Cascade)
+
+  @@unique([fromNodeId, toNodeId])
+  @@index([isAccessible])
+}
+
+model FloorBlock {
+  id        String  @id @default(cuid())
+  blockName String
+  posX      Float
+  posY      Float
+  posZ      Float
+  scaleX    Float   @default(1)
+  scaleY    Float   @default(1)
+  scaleZ    Float   @default(1)
+  floorId   String
+  tenantId  String?
+  floor     Floor   @relation(fields: [floorId], references: [id], onDelete: Cascade)
+  tenant    Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+
+  @@index([floorId])
+  @@index([tenantId])
+}
+
+model SyncLog {
+  id             String     @id @default(cuid())
+  sourceKioskId  String
+  tableName      String
+  operationType  String
+  payloadJson    String
+  syncStatus     String     @default("PENDING")
+  syncedToMssqlAt DateTime?
+  createdAt      DateTime   @default(now())
+
+  @@index([syncStatus, createdAt])
+  @@index([tableName, createdAt])
+  @@index([sourceKioskId])
+}

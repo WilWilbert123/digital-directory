@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --kiosk-bg: 220 20% 98%;
+  --kiosk-surface: 0 0% 100%;
+  --kiosk-border: 220 13% 91%;
+  --kiosk-accent: 250 89% 65%;
+  --kiosk-muted: 220 15% 45%;
+  --foreground: 224 71% 4%;
+  --background: 220 20% 98%;
+}
+
+.dark {
+  --kiosk-bg: 230 25% 7%;
+  --kiosk-surface: 230 25% 10%;
+  --kiosk-border: 230 25% 18%;
+  --kiosk-accent: 260 100% 75%;
+  --kiosk-muted: 230 15% 65%;
+  --foreground: 0 0% 100%;
+  --background: 230 25% 7%;
+}
+
+html,
+body {
+  min-height: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  color: hsl(var(--foreground));
+  background: hsl(var(--kiosk-bg));
+  background-image: radial-gradient(circle at 15% 50%, rgba(120, 119, 198, 0.08), transparent 25%), radial-gradient(circle at 85% 30%, rgba(120, 119, 198, 0.08), transparent 25%);
+}
+
+@layer utilities {
+  .touch-target {
+    min-height: 56px;
+    min-width: 56px;
+  }
+  
+  .glass-panel {
+    @apply bg-kiosk-surface/60 backdrop-blur-xl border border-white/10 dark:border-white/5 shadow-kiosk;
+  }
+  
+  .glass-button {
+    @apply bg-white/5 hover:bg-white/10 active:bg-white/5 backdrop-blur-lg border border-white/10 dark:border-white/5 transition-all duration-300;
+  }
+}
+
