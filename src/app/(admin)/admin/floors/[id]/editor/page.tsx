@@ -41,7 +41,10 @@ export default async function FloorEditorPage({ params }: { params: { id: string
         imageUrl={floor.image2dURL}
         tenants={tenants}
         initial={{
-          blocks: floor.floorBlocks,
+          blocks: floor.floorBlocks.map(b => ({
+            ...b,
+            shape: b.shape as "BOX" | "CYLINDER"
+          })),
           nodes,
           edges,
         }}

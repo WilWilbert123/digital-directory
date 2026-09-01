@@ -15,7 +15,7 @@ export function CategoriesView({
   const filtered = categoryId ? tenants.filter((t) => t.categoryId === categoryId) : tenants;
 
   return (
-    <div className="space-y-6 pb-28">
+    <div className="space-y-6 pb-28 pt-32 px-6 max-w-7xl mx-auto">
       <h2 className="font-display text-3xl font-bold">Categories & legends</h2>
       <CategorySelector categories={categories} />
       <div className="grid gap-3 md:grid-cols-3">

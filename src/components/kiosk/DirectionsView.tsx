@@ -48,8 +48,8 @@ export function DirectionsView({
         <PathfindingCanvas blocks={blocks} nodes={nodes} route={route} />
       </div>
       
-      <div className="relative z-10 w-full max-w-sm px-6">
-        <aside className="space-y-4 rounded-3xl border border-white/20 bg-black/60 p-6 backdrop-blur-xl shadow-2xl">
+      <div className="relative z-10 w-full max-w-sm px-6 pt-28 pointer-events-none">
+        <aside className="space-y-4 rounded-3xl border border-white/20 bg-black/60 p-6 backdrop-blur-xl shadow-2xl pointer-events-auto">
           <h2 className="text-xl font-bold text-white">Live pathfinder</h2>
           <label className="block text-sm font-semibold text-slate-300">Destination</label>
           <select

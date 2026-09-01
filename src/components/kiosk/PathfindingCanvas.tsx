@@ -3,6 +3,7 @@
 import { Canvas } from "@react-three/fiber";
 import { Environment, Html, CameraControls, PerspectiveCamera, Sphere } from "@react-three/drei";
 import { Suspense, useMemo, useRef, useState } from "react";
+import { Plus, Minus } from "lucide-react";
 import { DirectionLine } from "@/components/3d/DirectionLine";
 import { FloorModel, type FloorBlockMesh } from "@/components/3d/FloorModel";
 import { HumanAvatar } from "@/components/3d/HumanAvatar";
@@ -25,7 +26,7 @@ export function PathfindingCanvas({
   const markers = useMemo(() => nodes.filter((n) => n.type !== "WALKWAY"), [nodes]);
   
   const cameraControlsRef = useRef<any>(null);
-  const [viewMode, setViewMode] = useState<"IMMERSIVE" | "TOP">("IMMERSIVE");
+  const [viewMode, setViewMode] = useState<"IMMERSIVE" | "TOP">("TOP");
 
   const setView = (mode: "IMMERSIVE" | "TOP") => {
     setViewMode(mode);
@@ -33,18 +34,18 @@ export function PathfindingCanvas({
     
     if (mode === "TOP") {
       // Look straight down from high up
-      cameraControlsRef.current.setLookAt(0, 45, 0.1, 0, 0, 0, true);
+      cameraControlsRef.current.setLookAt(0, 65, 0.1, 0, 0, 0, true);
     } else {
-      // Isometric immersive view
-      cameraControlsRef.current.setLookAt(18, 16, 18, 0, 0, 0, true);
+      // Angled top-down immersive view
+      cameraControlsRef.current.setLookAt(0, 43, 49, 0, 0, 0, true);
     }
   };
 
   return (
-    <div className="h-full min-h-[420px] w-full overflow-hidden rounded-3xl border border-kiosk-border bg-black relative">
+    <div className="absolute inset-0 w-full h-full overflow-hidden bg-black">
       
       {/* View Toggle UI */}
-      <div className="absolute top-6 right-6 z-10 flex overflow-hidden rounded-xl border border-slate-700 bg-black/60 shadow-2xl backdrop-blur-md">
+      <div className="absolute top-24 right-6 z-10 flex overflow-hidden rounded-xl border border-slate-700 bg-black/60 shadow-2xl backdrop-blur-md">
         <button
           className={`px-4 py-2 text-sm font-bold tracking-wide transition-colors ${viewMode === "IMMERSIVE" ? "bg-sky-600 text-white" : "text-slate-300 hover:bg-slate-800"}`}
           onClick={() => setView("IMMERSIVE")}
@@ -59,10 +60,25 @@ export function PathfindingCanvas({
         </button>
       </div>
 
+      {/* Zoom Controls */}
+      <div className="absolute top-40 right-6 z-10 flex flex-col overflow-hidden rounded-xl border border-slate-700 bg-black/60 shadow-2xl backdrop-blur-md">
+        <button
+          className="p-3 text-slate-300 hover:bg-slate-800 hover:text-white transition-colors border-b border-slate-700"
+          onClick={() => cameraControlsRef.current?.dolly(15, true)}
+        >
+          <Plus size={20} />
+        </button>
+        <button
+          className="p-3 text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+          onClick={() => cameraControlsRef.current?.dolly(-15, true)}
+        >
+          <Minus size={20} />
+        </button>
+      </div>
+
       <Canvas shadows gl={{ antialias: true }}>
         <color attach="background" args={["#020617"]} />
-        {/* Fog removed so the map doesn't fade to black when zooming out */}
-        <PerspectiveCamera makeDefault position={[18, 16, 18]} fov={45} />
+        <PerspectiveCamera makeDefault position={[0, 65, 0.1]} fov={45} />
         <ambientLight intensity={0.45} />
         <directionalLight position={[12, 20, 8]} intensity={1.4} castShadow />
         <Suspense fallback={<Html center>Loading 3D map…</Html>}>
@@ -97,9 +113,11 @@ export function PathfindingCanvas({
         <CameraControls 
           ref={cameraControlsRef}
           maxPolarAngle={Math.PI / 2.05} // Prevent going below ground
-          minDistance={5} 
-          maxDistance={120} // Allow massive zoom out
-          dollySpeed={1.5}
+          minDistance={20} 
+          maxDistance={120}
+          dollySpeed={1}
+          mouseButtons={{ left: 1, middle: 0, right: 0, wheel: 16 }} // 1=rotate, 16=zoom
+          touches={{ one: 1, two: 512, three: 0 }} // 1=rotate, 512=touch_zoom
           smoothTime={0.4} // Butter smooth transitions
         />
       </Canvas>

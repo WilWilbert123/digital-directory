@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useTransition } from "react";
+import { useEffect, useMemo, useTransition, useState } from "react";
 import { saveFloorGraphAction } from "@/app/actions/admin";
 import { UnifiedFloorEditor } from "@/components/admin/UnifiedFloorEditor";
 import { useAdminStore, type DraftBlock, type DraftEdge, type DraftNode } from "@/store/useAdminStore";
@@ -33,6 +33,7 @@ export function FloorEditorClient({
   const dirty = useAdminStore((s) => s.dirty);
   const markClean = useAdminStore((s) => s.markClean);
   const [pending, start] = useTransition();
+  const [confirmModal, setConfirmModal] = useState<"blocks" | "nodes" | null>(null);
 
   useEffect(() => {
     hydrate(initial);
@@ -89,16 +90,57 @@ export function FloorEditorClient({
           >
             Redo
           </button>
+        </div>
+        <div className="flex gap-2 border-l border-slate-700 pl-4">
           <button
             type="button"
-            onClick={() => {
-              if (confirm("Are you sure you want to clear all nodes and edges? Blocks will remain.")) {
-                useAdminStore.getState().clearGraph();
-              }
-            }}
+            onClick={() => useAdminStore.getState().addMultipleBlocks(1, -18, -18)}
+            className="rounded-lg bg-indigo-900/50 text-indigo-300 px-3 py-2 text-sm font-semibold hover:bg-indigo-800/80 transition-colors"
+          >
+            +1 Block
+          </button>
+          <button
+            type="button"
+            onClick={() => useAdminStore.getState().addMultipleBlocks(5, -18, -18)}
+            className="rounded-lg bg-indigo-900/50 text-indigo-300 px-3 py-2 text-sm font-semibold hover:bg-indigo-800/80 transition-colors"
+          >
+            +5 Blocks
+          </button>
+          <button
+            type="button"
+            onClick={() => useAdminStore.getState().addMultipleBlocks(10, -18, -18)}
+            className="rounded-lg bg-indigo-900/50 text-indigo-300 px-3 py-2 text-sm font-semibold hover:bg-indigo-800/80 transition-colors"
+          >
+            +10 Blocks
+          </button>
+        </div>
+        <div className="flex gap-2 border-l border-slate-700 pl-4">
+          <button
+            type="button"
+            onClick={() => setConfirmModal("blocks")}
+            className="rounded-lg bg-rose-900/50 text-rose-300 px-3 py-2 text-sm font-semibold hover:bg-rose-800/80 transition-colors"
+          >
+            Clear Blocks
+          </button>
+          <button
+            type="button"
+            onClick={() => setConfirmModal("nodes")}
             className="rounded-lg bg-rose-900/50 text-rose-300 px-3 py-2 text-sm font-semibold hover:bg-rose-800/80 transition-colors"
           >
             Clear Nodes
+          </button>
+        </div>
+        <div className="flex gap-2 border-l border-slate-700 pl-4">
+          <button
+            type="button"
+            onClick={() => {
+              if (confirm("This will replace all blocks and nodes with a preset layout. Continue?")) {
+                useAdminStore.getState().loadPresetLayout(tenants.map(t => t.id));
+              }
+            }}
+            className="rounded-lg bg-emerald-900/50 text-emerald-300 px-3 py-2 text-sm font-semibold hover:bg-emerald-800/80 transition-colors"
+          >
+            Load Preset Layout
           </button>
         </div>
 
@@ -126,9 +168,9 @@ export function FloorEditorClient({
         {/* Floating/Bottom Property Panel */}
         <div className="flex-none h-[74px]">
           {selectedBlock ? (
-            <div className="grid gap-3 rounded-2xl border border-sky-800/50 bg-sky-950/20 p-4 xl:grid-cols-4 shadow-lg">
+            <div className="grid gap-3 rounded-2xl border border-sky-800/50 bg-sky-950/20 p-4 xl:grid-cols-5 shadow-lg">
               <input
-                className="h-10 rounded bg-slate-900 px-3 border border-slate-800"
+                className="h-10 rounded bg-slate-900 px-3 border border-slate-800 xl:col-span-1"
                 value={selectedBlock.blockName}
                 onChange={(e) => upsertBlock({ ...selectedBlock, blockName: e.target.value })}
                 placeholder="Block Name"
@@ -144,6 +186,14 @@ export function FloorEditorClient({
                     {t.tenantName}
                   </option>
                 ))}
+              </select>
+              <select
+                className="h-10 rounded bg-slate-900 px-3 border border-slate-800"
+                value={selectedBlock.shape ?? "BOX"}
+                onChange={(e) => upsertBlock({ ...selectedBlock, shape: e.target.value as "BOX" | "CYLINDER" })}
+              >
+                <option value="BOX">Square/Box</option>
+                <option value="CYLINDER">Circle/Oval</option>
               </select>
               <button type="button" className="text-rose-400 font-medium hover:underline text-sm" onClick={() => removeBlock(selectedBlock.id)}>
                 Delete block
@@ -173,6 +223,42 @@ export function FloorEditorClient({
           ) : null}
         </div>
       </div>
+
+      {confirmModal && (
+        <div className="fixed inset-0 z-[99999999] flex items-center justify-center bg-black/70 backdrop-blur-md">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 shadow-2xl max-w-md w-full mx-4">
+            <h3 className="text-xl font-bold text-slate-100 mb-2">
+              {confirmModal === "blocks" ? "Clear All Blocks" : "Clear All Nodes"}
+            </h3>
+            <p className="text-slate-400 mb-6 text-sm">
+              {confirmModal === "blocks" 
+                ? "Are you sure you want to clear all blocks? Nodes and edges will remain."
+                : "Are you sure you want to clear all nodes and edges? Blocks will remain."}
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setConfirmModal(null)}
+                className="px-4 py-2 rounded-lg bg-slate-800 text-slate-300 font-medium hover:bg-slate-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (confirmModal === "blocks") {
+                    useAdminStore.getState().clearBlocks();
+                  } else {
+                    useAdminStore.getState().clearGraph();
+                  }
+                  setConfirmModal(null);
+                }}
+                className="px-4 py-2 rounded-lg bg-rose-600 text-white font-medium hover:bg-rose-500 transition-colors"
+              >
+                Clear {confirmModal === "blocks" ? "Blocks" : "Nodes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

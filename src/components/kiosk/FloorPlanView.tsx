@@ -32,8 +32,8 @@ export function FloorPlanView({
         <PathfindingCanvas blocks={blocks} nodes={floorNodes} route={null} imageUrl={floor?.image2dURL} />
       </div>
       
-      <div className="relative z-10 w-full px-6">
-        <div className="inline-flex flex-wrap gap-2 rounded-3xl border border-white/20 bg-black/60 p-4 backdrop-blur-xl shadow-2xl">
+      <div className="relative z-10 w-full px-6 pt-28 pointer-events-none">
+        <div className="inline-flex flex-wrap gap-2 rounded-3xl border border-white/20 bg-black/60 p-4 backdrop-blur-xl shadow-2xl pointer-events-auto">
           {floors.map((f) => (
             <button
               key={f.id}

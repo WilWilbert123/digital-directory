@@ -14,6 +14,7 @@ export type DraftBlock = {
   scaleX: number;
   scaleY: number;
   scaleZ: number;
+  shape: "BOX" | "CYLINDER";
   tenantId: string | null;
 };
 
@@ -60,7 +61,10 @@ type AdminState = {
   markClean: () => void;
   undo: () => void;
   redo: () => void;
+  clearBlocks: () => void;
   clearGraph: () => void;
+  addMultipleBlocks: (count: number, startX: number, startZ: number) => void;
+  loadPresetLayout: (tenantIds: string[]) => void;
 };
 
 // Helper to push history before mutating state
@@ -136,8 +140,124 @@ export const useAdminStore = create<AdminState>((set) => ({
   setEdgeFrom: (edgeFromId) => set({ edgeFromId }),
   markClean: () => set({ dirty: false }),
   
+  clearBlocks: () =>
+    set((s) => pushHistory(s, { blocks: [], selectedBlockId: null })),
+  
   clearGraph: () => 
     set((s) => pushHistory(s, { nodes: [], edges: [], selectedNodeId: null, edgeFromId: null })),
+
+  addMultipleBlocks: (count, startX, startZ) =>
+    set((s) => {
+      const newBlocks = Array.from({ length: count }).map((_, i) => ({
+        id: crypto.randomUUID(),
+        blockName: `BLK-${s.blocks.length + i + 1}`,
+        posX: startX + (i * 3),
+        posY: 0,
+        posZ: startZ,
+        scaleX: 2,
+        scaleY: 2,
+        scaleZ: 2,
+        shape: "BOX" as const,
+        tenantId: null,
+      }));
+      return pushHistory(s, { blocks: [...s.blocks, ...newBlocks] });
+    }),
+    
+  loadPresetLayout: (tenantIds) =>
+    set((s) => {
+      const blocks: DraftBlock[] = [];
+      const nodes: DraftNode[] = [];
+      const edges: DraftEdge[] = [];
+      
+      const getTenant = (i: number) => tenantIds.length > 0 ? tenantIds[i % tenantIds.length] : null;
+
+      let blockCount = 0;
+      const addBlock = (posX: number, posZ: number, scaleX: number, scaleZ: number, shape: "BOX" | "CYLINDER", entranceX: number, entranceZ: number) => {
+        const blockId = crypto.randomUUID();
+        const entranceId = crypto.randomUUID();
+        blocks.push({
+          id: blockId,
+          blockName: `BLK-${blockCount + 1}`,
+          posX, posY: 0, posZ,
+          scaleX, scaleY: 2, scaleZ,
+          shape,
+          tenantId: getTenant(blockCount)
+        });
+        nodes.push({
+          id: entranceId,
+          nodeName: `E${blockCount + 1}`,
+          type: "TENANT_ENTRANCE",
+          positionX: entranceX,
+          positionY: 0.2,
+          positionZ: entranceZ,
+        });
+        blockCount++;
+        return entranceId;
+      };
+
+      const entranceIds: string[] = [];
+
+      // Center (1 circle)
+      entranceIds.push(addBlock(0, 0, 8, 8, "CYLINDER", 0, 5));
+
+      // Top (5 blocks)
+      for (let i = 0; i < 5; i++) {
+        const x = -12 + (i * 6);
+        entranceIds.push(addBlock(x, -12, 4, 4, "BOX", x, -9));
+      }
+
+      // Left (5 blocks)
+      for (let i = 0; i < 5; i++) {
+        const z = -6 + (i * 4);
+        entranceIds.push(addBlock(-14, z, 4, 3, "BOX", -11, z));
+      }
+
+      // Right (4 blocks)
+      for (let i = 0; i < 4; i++) {
+        const z = -6 + (i * 6);
+        entranceIds.push(addBlock(14, z, 4, 5, "BOX", 11, z));
+      }
+
+      const hubNodeId = crypto.randomUUID();
+      nodes.push({
+        id: hubNodeId,
+        nodeName: "HUB",
+        type: "WALKWAY",
+        positionX: 0,
+        positionY: 0.2,
+        positionZ: 8,
+      });
+
+      const kioskNodeId = crypto.randomUUID();
+      nodes.push({
+        id: kioskNodeId,
+        nodeName: "START",
+        type: "KIOSK_START",
+        positionX: 0,
+        positionY: 0.2,
+        positionZ: 16,
+      });
+
+      edges.push({
+        id: crypto.randomUUID(),
+        fromNodeId: kioskNodeId,
+        toNodeId: hubNodeId,
+        weight: 1,
+        isAccessible: true,
+      });
+
+      for (const entId of entranceIds) {
+        edges.push({
+          id: crypto.randomUUID(),
+          fromNodeId: hubNodeId,
+          toNodeId: entId,
+          weight: 1,
+          isAccessible: true,
+        });
+      }
+
+      return pushHistory(s, { blocks, nodes, edges, selectedBlockId: null, selectedNodeId: null, edgeFromId: null });
+    }),
     
   undo: () =>
     set((s) => {

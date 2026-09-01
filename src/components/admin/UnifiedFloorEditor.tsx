@@ -1,7 +1,7 @@
 "use client";
 
 import { Canvas } from "@react-three/fiber";
-import { Html, Line, OrbitControls, PerspectiveCamera, Sphere, TransformControls } from "@react-three/drei";
+import { Html, Line, MapControls, PerspectiveCamera, Sphere, TransformControls } from "@react-three/drei";
 import { Suspense, useMemo, useState } from "react";
 import * as THREE from "three";
 import { FloorModel } from "@/components/3d/FloorModel";
@@ -66,9 +66,9 @@ export function UnifiedFloorEditor({
         posX: Number(point.x.toFixed(2)),
         posY: 0,
         posZ: Number(point.z.toFixed(2)),
-        scaleX: 8,
-        scaleY: 4,
-        scaleZ: 8,
+        scaleX: 2,
+        scaleY: 2,
+        scaleZ: 2,
         tenantId: null,
       });
       selectBlock(id);
@@ -173,9 +173,15 @@ export function UnifiedFloorEditor({
                 }
               }}
             >
-              <mesh visible={false}>
-                <boxGeometry args={[selectedBlock.scaleX, selectedBlock.scaleY, selectedBlock.scaleZ]} />
-              </mesh>
+              <group>
+                <mesh visible={false} scale={[selectedBlock.scaleX, selectedBlock.scaleY, selectedBlock.scaleZ]}>
+                  {selectedBlock.shape === "CYLINDER" ? (
+                    <cylinderGeometry args={[0.5, 0.5, 1, 32]} />
+                  ) : (
+                    <boxGeometry args={[1, 1, 1]} />
+                  )}
+                </mesh>
+              </group>
             </TransformControls>
           ) : null}
 
@@ -262,7 +268,7 @@ export function UnifiedFloorEditor({
           ) : null}
 
         </Suspense>
-        <OrbitControls makeDefault />
+        <MapControls makeDefault />
       </Canvas>
     </div>
   );
