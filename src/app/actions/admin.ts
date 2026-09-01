@@ -256,6 +256,7 @@ export async function saveFloorGraphAction(input: {
     scaleY: number;
     scaleZ: number;
     tenantId: string | null;
+    shape: "BOX" | "CYLINDER";
   }>;
   nodes: Array<{
     id: string;
@@ -334,6 +335,7 @@ export async function saveFloorGraphAction(input: {
           scaleZ: b.scaleZ,
           floorId,
           tenantId: b.tenantId,
+          shape: b.shape,
         })),
       });
     }
@@ -347,7 +349,7 @@ export async function saveFloorGraphAction(input: {
         });
       }
     }
-  });
+  }, { maxWait: 15000, timeout: 20000 });
 
   await audit("FloorGraph", "UPDATE", { floorId, blocks: blocks.length, nodes: nodes.length, edges: edges.length });
   revalidatePath(`/admin/floors/${floorId}/editor`);

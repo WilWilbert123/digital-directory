@@ -13,6 +13,7 @@ export type FloorBlockMesh = {
   scaleX: number;
   scaleY: number;
   scaleZ: number;
+  shape?: string;
   color?: string;
   selected?: boolean;
   label?: string;
@@ -33,7 +34,7 @@ export function FloorModel({
 }) {
   return (
     <group>
-      <gridHelper args={[40, 40, "#334155", "#1e293b"]} position={[0, 0.01, 0]} />
+      <gridHelper args={[200, 200, "#334155", "#1e293b"]} position={[0, 0.01, 0]} />
       <mesh
         rotation={[-Math.PI / 2, 0, 0]}
         position={[0, 0, 0]}
@@ -44,7 +45,7 @@ export function FloorModel({
           onPlaneClick?.(e.point);
         }}
       >
-        <planeGeometry args={[40, 40]} />
+        <planeGeometry args={[200, 200]} />
         <meshStandardMaterial color="#0b1220" roughness={0.9} />
       </mesh>
       {imageUrl && !imageUrl.endsWith(".svg") ? <BlueprintOverlay url={imageUrl} /> : null}
@@ -59,7 +60,11 @@ export function FloorModel({
             onBlockClick?.(block.id);
           }}
         >
-          <boxGeometry args={[1, 1, 1]} />
+          {block.shape === "CYLINDER" ? (
+            <cylinderGeometry args={[0.5, 0.5, 1, 32]} />
+          ) : (
+            <boxGeometry args={[1, 1, 1]} />
+          )}
           <meshStandardMaterial
             color={block.color ?? "#cbd5e1"} // Light gray default
             emissive={block.selected ? "#38bdf8" : (block.color ?? "#cbd5e1")} // Glows blue if selected, otherwise emits its own color

@@ -23,7 +23,7 @@ export function HomeSearch({ tenants }: { tenants: KioskTenant[] }) {
   }, [query, tenants]);
 
   return (
-    <div className="mx-auto max-w-6xl space-y-8 pb-32 pt-8">
+    <div className="mx-auto max-w-6xl px-6 space-y-8 pb-32 pt-32">
       <div className="flex flex-col items-center justify-center space-y-4 mb-12">
         <h1 className="text-4xl md:text-5xl font-display font-bold tracking-tight bg-gradient-to-br from-foreground to-kiosk-muted bg-clip-text text-transparent">
           Where would you like to go?

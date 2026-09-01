@@ -30,6 +30,7 @@ export default async function DirectionsPage({ searchParams }: { searchParams: {
         scaleX: b.scaleX,
         scaleY: b.scaleY,
         scaleZ: b.scaleZ,
+        shape: b.shape,
         color: b.tenant?.category.colorHex,
         label: b.tenant?.tenantName ?? b.blockName,
       }))}

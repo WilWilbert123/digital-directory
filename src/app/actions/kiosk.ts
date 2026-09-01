@@ -72,6 +72,7 @@ export async function getWayfindingGraphAction() {
 
   const adjustedNodes = nodes.map(n => ({
     ...n,
+    type: n.type as import("@/lib/pathfinding").PathNodeType,
     positionY: adjustY(n.floorId, n.positionY),
   }));
 
@@ -80,7 +81,39 @@ export async function getWayfindingGraphAction() {
 
 export async function computeRouteAction(startNodeId: string, goalNodeId: string) {
   const { nodes, edges } = await getWayfindingGraphAction();
-  return findPath(graphFromRecords({ nodes, edges }), startNodeId, goalNodeId);
+  const path = findPath(graphFromRecords({ nodes, edges }), startNodeId, goalNodeId);
+
+  if (path.found) {
+    const { routeAroundObstacles } = await import("@/lib/obstacleAvoidance");
+    const blocks = await prisma.floorBlock.findMany();
+    
+    const dodgedPolyline = [];
+    for (let i = 0; i < path.polyline.length - 1; i++) {
+      const start = path.polyline[i];
+      const end = path.polyline[i + 1];
+      
+      const startNode = path.nodes[i];
+      const endNode = path.nodes[i + 1];
+      
+      // If jumping floors, do straight line
+      if (startNode.floorId !== endNode.floorId || Math.abs(start.y - end.y) > 0.1) {
+        if (dodgedPolyline.length === 0) dodgedPolyline.push(start);
+        dodgedPolyline.push(end);
+        continue;
+      }
+
+      const floorBlocks = blocks.filter(b => b.floorId === startNode.floorId);
+      const segment = routeAroundObstacles(start, end, floorBlocks);
+      if (dodgedPolyline.length > 0) {
+        dodgedPolyline.push(...segment.slice(1));
+      } else {
+        dodgedPolyline.push(...segment);
+      }
+    }
+    path.polyline = dodgedPolyline.length > 0 ? dodgedPolyline : path.polyline;
+  }
+
+  return path;
 }
 
 export async function getKioskBootstrapAction() {

@@ -20,6 +20,7 @@ export default async function FloorPlanPage() {
     scaleX: number;
     scaleY: number;
     scaleZ: number;
+    shape: string;
     color?: string;
     label?: string;
   }>> = {};
@@ -34,6 +35,7 @@ export default async function FloorPlanPage() {
       scaleX: b.scaleX,
       scaleY: b.scaleY,
       scaleZ: b.scaleZ,
+      shape: b.shape,
       color: b.tenant?.category.colorHex,
       label: b.tenant?.tenantName ?? b.blockName,
     });
