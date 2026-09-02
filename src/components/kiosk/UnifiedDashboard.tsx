@@ -79,8 +79,20 @@ export function UnifiedDashboard({
                     <ArrowLeft className="h-6 w-6" />
                   </button>
                   {tenant && (
-                    <div className="pointer-events-auto rounded-full bg-black/20 border border-white/10 px-6 py-3 backdrop-blur-xl shadow-2xl">
+                    <div className="pointer-events-auto flex items-center gap-3 rounded-full bg-black/20 border border-white/10 px-6 py-3 backdrop-blur-xl shadow-2xl">
                       <h2 className="text-lg font-bold text-white tracking-wide">{tenant.tenantName}</h2>
+                      <span
+                        className="flex items-center justify-center rounded-full px-3 py-1 text-sm font-extrabold tracking-wider shadow-lg"
+                        style={{
+                          background: tenant.category?.colorHex ?? "#38bdf8",
+                          color: "#fff",
+                          minWidth: "2.5rem",
+                          textShadow: "0 1px 4px rgba(0,0,0,0.4)",
+                        }}
+                        title={tenant.floor?.floorName}
+                      >
+                        F{tenant.floor?.levelNumber ?? "?"}
+                      </span>
                     </div>
                   )}
                 </div>

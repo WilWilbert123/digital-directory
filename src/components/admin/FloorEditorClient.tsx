@@ -30,6 +30,7 @@ export function FloorEditorClient({
   const upsertNode = useAdminStore((s) => s.upsertNode);
   const removeBlock = useAdminStore((s) => s.removeBlock);
   const removeNode = useAdminStore((s) => s.removeNode);
+  const scaleSelectedBlock = useAdminStore((s) => s.scaleSelectedBlock);
   const dirty = useAdminStore((s) => s.dirty);
   const markClean = useAdminStore((s) => s.markClean);
   const [pending, start] = useTransition();
@@ -67,14 +68,16 @@ export function FloorEditorClient({
 
   return (
     <div className="flex h-[calc(100vh-10rem)] min-h-[600px] flex-col gap-4">
-      <div className="flex-none flex flex-wrap gap-2">
+      <div className="flex-none flex flex-wrap gap-2 items-center p-3 rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
         {(["select", "marquee", "block", "node", "edge"] as const).map((t) => (
           <button
             key={t}
             type="button"
             onClick={() => setTool(t)}
-            className={`rounded-full px-4 py-2 text-sm capitalize transition-colors ${
-              tool === t ? "bg-sky-600 font-bold" : "bg-slate-800 hover:bg-slate-700"
+            className={`rounded-full px-4 py-2 text-sm capitalize transition-all font-semibold shadow-sm ${
+              tool === t
+                ? "bg-sky-600 text-white shadow-sky-600/20"
+                : "bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700"
             }`}
           >
             {t}
@@ -86,28 +89,28 @@ export function FloorEditorClient({
             setTool("select");
             useAdminStore.getState().setSelection(blocks.map(b => b.id), nodes.map(n => n.id));
           }}
-          className="rounded-full bg-slate-800 hover:bg-slate-700 px-4 py-2 text-sm font-semibold transition-colors border border-sky-900/50"
+          className="rounded-full bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 px-4 py-2 text-sm font-semibold transition-all border border-slate-200 dark:border-slate-700 shadow-sm"
         >
           Select All
         </button>
-        <div className="ml-4 flex gap-2 border-l border-slate-700 pl-4">
+        <div className="ml-2 flex gap-2 border-l border-slate-300 dark:border-slate-700 pl-4">
           <button
             type="button"
             onClick={useAdminStore((s) => s.undo)}
-            className="rounded-lg bg-slate-800 px-3 py-2 text-sm font-semibold hover:bg-slate-700 transition-colors"
+            className="rounded-lg bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 px-3 py-2 text-sm font-semibold transition-all border border-slate-200 dark:border-slate-700 shadow-sm"
           >
             Undo
           </button>
           <button
             type="button"
             onClick={useAdminStore((s) => s.redo)}
-            className="rounded-lg bg-slate-800 px-3 py-2 text-sm font-semibold hover:bg-slate-700 transition-colors"
+            className="rounded-lg bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 px-3 py-2 text-sm font-semibold transition-all border border-slate-200 dark:border-slate-700 shadow-sm"
           >
             Redo
           </button>
         </div>
         {multiSelected && (
-          <div className="flex gap-2 border-l border-slate-700 pl-4">
+          <div className="flex gap-2 border-l border-slate-300 dark:border-slate-700 pl-4">
             <button
               type="button"
               onClick={() => {
@@ -118,52 +121,52 @@ export function FloorEditorClient({
                   if (block) state.upsertBlock({ ...block, posY: 0 });
                 });
               }}
-              className="rounded-lg bg-amber-900/50 text-amber-300 px-3 py-2 text-sm font-semibold hover:bg-amber-800/80 transition-colors"
+              className="rounded-lg bg-amber-100 text-amber-800 hover:bg-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:hover:bg-amber-900/80 px-3 py-2 text-sm font-semibold transition-colors border border-amber-300 dark:border-amber-800/50"
             >
               Snap to Floor
             </button>
           </div>
         )}
-        <div className="flex gap-2 border-l border-slate-700 pl-4">
+        <div className="flex gap-2 border-l border-slate-300 dark:border-slate-700 pl-4">
           <button
             type="button"
             onClick={() => useAdminStore.getState().addMultipleBlocks(1, -18, -18)}
-            className="rounded-lg bg-indigo-900/50 text-indigo-300 px-3 py-2 text-sm font-semibold hover:bg-indigo-800/80 transition-colors"
+            className="rounded-lg bg-indigo-100 text-indigo-800 hover:bg-indigo-200 dark:bg-indigo-950/60 dark:text-indigo-300 dark:hover:bg-indigo-900/80 px-3 py-2 text-sm font-semibold transition-colors border border-indigo-300 dark:border-indigo-800/50"
           >
             +1 Block
           </button>
           <button
             type="button"
             onClick={() => useAdminStore.getState().addMultipleBlocks(5, -18, -18)}
-            className="rounded-lg bg-indigo-900/50 text-indigo-300 px-3 py-2 text-sm font-semibold hover:bg-indigo-800/80 transition-colors"
+            className="rounded-lg bg-indigo-100 text-indigo-800 hover:bg-indigo-200 dark:bg-indigo-950/60 dark:text-indigo-300 dark:hover:bg-indigo-900/80 px-3 py-2 text-sm font-semibold transition-colors border border-indigo-300 dark:border-indigo-800/50"
           >
             +5 Blocks
           </button>
           <button
             type="button"
             onClick={() => useAdminStore.getState().addMultipleBlocks(10, -18, -18)}
-            className="rounded-lg bg-indigo-900/50 text-indigo-300 px-3 py-2 text-sm font-semibold hover:bg-indigo-800/80 transition-colors"
+            className="rounded-lg bg-indigo-100 text-indigo-800 hover:bg-indigo-200 dark:bg-indigo-950/60 dark:text-indigo-300 dark:hover:bg-indigo-900/80 px-3 py-2 text-sm font-semibold transition-colors border border-indigo-300 dark:border-indigo-800/50"
           >
             +10 Blocks
           </button>
         </div>
-        <div className="flex gap-2 border-l border-slate-700 pl-4">
+        <div className="flex gap-2 border-l border-slate-300 dark:border-slate-700 pl-4">
           <button
             type="button"
             onClick={() => setConfirmModal("blocks")}
-            className="rounded-lg bg-rose-900/50 text-rose-300 px-3 py-2 text-sm font-semibold hover:bg-rose-800/80 transition-colors"
+            className="rounded-lg bg-rose-100 text-rose-800 hover:bg-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:hover:bg-rose-900/80 px-3 py-2 text-sm font-semibold transition-colors border border-rose-300 dark:border-rose-800/50"
           >
             Clear Blocks
           </button>
           <button
             type="button"
             onClick={() => setConfirmModal("nodes")}
-            className="rounded-lg bg-rose-900/50 text-rose-300 px-3 py-2 text-sm font-semibold hover:bg-rose-800/80 transition-colors"
+            className="rounded-lg bg-rose-100 text-rose-800 hover:bg-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:hover:bg-rose-900/80 px-3 py-2 text-sm font-semibold transition-colors border border-rose-300 dark:border-rose-800/50"
           >
             Clear Nodes
           </button>
         </div>
-        <div className="flex gap-2 border-l border-slate-700 pl-4">
+        <div className="flex gap-2 border-l border-slate-300 dark:border-slate-700 pl-4">
           <button
             type="button"
             onClick={() => {
@@ -171,7 +174,7 @@ export function FloorEditorClient({
                 useAdminStore.getState().loadPresetLayout(tenants.map(t => t.id));
               }
             }}
-            className="rounded-lg bg-emerald-900/50 text-emerald-300 px-3 py-2 text-sm font-semibold hover:bg-emerald-800/80 transition-colors"
+            className="rounded-lg bg-emerald-100 text-emerald-800 hover:bg-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-900/80 px-3 py-2 text-sm font-semibold transition-colors border border-emerald-300 dark:border-emerald-800/50"
           >
             Load Preset Layout
           </button>
@@ -186,7 +189,7 @@ export function FloorEditorClient({
               markClean();
             })
           }
-          className="ml-auto rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold transition-opacity disabled:opacity-40"
+          className="ml-auto rounded-full bg-emerald-600 text-white font-semibold hover:bg-emerald-500 px-5 py-2 text-sm transition-all shadow-md shadow-emerald-600/20 disabled:opacity-40"
         >
           {pending ? "Saving…" : "Save graph"}
         </button>
@@ -202,18 +205,20 @@ export function FloorEditorClient({
         {(selectedBlock || selectedNode || multiSelected) && (
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-full max-w-5xl px-4 z-10">
             {selectedBlock ? (
-            <div className="grid gap-3 rounded-2xl border border-sky-800/50 bg-sky-950/20 p-4 xl:grid-cols-7 shadow-lg">
+            <div className="grid gap-3 rounded-2xl border border-slate-200 dark:border-sky-800/50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md p-4 xl:grid-cols-7 shadow-2xl">
               <div className="flex flex-col xl:col-span-2">
+                <label className="text-[10px] text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider font-semibold">Block Name</label>
                 <input
-                  className="h-10 rounded bg-slate-900 px-3 border border-slate-800"
+                  className="h-10 rounded bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 px-3 border border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500"
                   value={selectedBlock.blockName}
                   onChange={(e) => upsertBlock({ ...selectedBlock, blockName: e.target.value })}
                   placeholder="Block Name"
                 />
               </div>
               <div className="flex flex-col xl:col-span-2">
+                <label className="text-[10px] text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider font-semibold">Tenant</label>
                 <select
-                  className="h-10 rounded bg-slate-900 px-3 border border-slate-800"
+                  className="h-10 rounded bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 px-3 border border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500"
                   value={selectedBlock.tenantId ?? ""}
                   onChange={(e) => upsertBlock({ ...selectedBlock, tenantId: e.target.value || null })}
                 >
@@ -226,8 +231,9 @@ export function FloorEditorClient({
                 </select>
               </div>
               <div className="flex flex-col xl:col-span-1">
+                <label className="text-[10px] text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider font-semibold">Shape</label>
                 <select
-                  className="h-10 rounded bg-slate-900 px-3 border border-slate-800"
+                  className="h-10 rounded bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 px-3 border border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500"
                   value={selectedBlock.shape ?? "BOX"}
                   onChange={(e) => upsertBlock({ ...selectedBlock, shape: e.target.value as "BOX" | "CYLINDER" })}
                 >
@@ -236,47 +242,70 @@ export function FloorEditorClient({
                 </select>
               </div>
               <div className="flex flex-col xl:col-span-1">
+                <label className="text-[10px] text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider font-semibold">Elevation (Y)</label>
                 <input
                   type="number"
                   step="0.1"
                   placeholder="Elevation (Y)"
-                  className="h-10 rounded bg-slate-900 px-3 border border-slate-800"
+                  className="h-10 rounded bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 px-3 border border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500"
                   value={selectedBlock.posY}
                   onChange={(e) => upsertBlock({ ...selectedBlock, posY: Number(e.target.value) })}
                 />
               </div>
               <div className="flex flex-col">
-                <label className="text-[10px] text-slate-400 mb-1 uppercase tracking-wider font-semibold">Height</label>
+                <label className="text-[10px] text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider font-semibold">Height</label>
                 <input
                   type="number"
                   step="0.1"
                   min="0.1"
-                  className="h-10 rounded bg-slate-900 px-3 border border-slate-800"
+                  className="h-10 rounded bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 px-3 border border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500"
                   value={selectedBlock.scaleY}
                   onChange={(e) => upsertBlock({ ...selectedBlock, scaleY: Number(e.target.value) })}
                 />
               </div>
               <div className="flex flex-col justify-end">
-                <button type="button" className="h-10 text-rose-400 font-medium hover:bg-rose-950/30 rounded border border-rose-900/50 text-sm transition-colors" onClick={() => removeBlock(selectedBlock.id)}>
+                <button type="button" className="h-10 text-rose-600 hover:bg-rose-50 border border-rose-200 dark:text-rose-400 dark:hover:bg-rose-950/30 dark:border-rose-900/50 rounded font-medium text-sm transition-colors" onClick={() => removeBlock(selectedBlock.id)}>
                   Delete
                 </button>
               </div>
+
+              {/* 1-Click Scale Controls Row */}
+              <div className="col-span-full pt-3 border-t border-slate-200 dark:border-slate-800 flex flex-wrap gap-4 items-center justify-between">
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">1-Click Scale:</span>
+                <div className="flex flex-wrap gap-3 items-center">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] font-semibold text-slate-500">Width (X):</span>
+                    <button type="button" onClick={() => scaleSelectedBlock(-0.5, 0, 0)} className="px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:bg-slate-200 text-xs font-bold transition-colors">-0.5</button>
+                    <button type="button" onClick={() => scaleSelectedBlock(0.5, 0, 0)} className="px-2.5 py-1 rounded-md bg-sky-100 text-sky-800 dark:bg-sky-950/80 dark:text-sky-300 border border-sky-200 dark:border-sky-800 hover:bg-sky-200 text-xs font-bold transition-colors">+0.5</button>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] font-semibold text-slate-500">Length (Z):</span>
+                    <button type="button" onClick={() => scaleSelectedBlock(0, 0, -0.5)} className="px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:bg-slate-200 text-xs font-bold transition-colors">-0.5</button>
+                    <button type="button" onClick={() => scaleSelectedBlock(0, 0, 0.5)} className="px-2.5 py-1 rounded-md bg-sky-100 text-sky-800 dark:bg-sky-950/80 dark:text-sky-300 border border-sky-200 dark:border-sky-800 hover:bg-sky-200 text-xs font-bold transition-colors">+0.5</button>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] font-semibold text-slate-500">Height (Y):</span>
+                    <button type="button" onClick={() => scaleSelectedBlock(0, -0.5, 0)} className="px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:bg-slate-200 text-xs font-bold transition-colors">-0.5</button>
+                    <button type="button" onClick={() => scaleSelectedBlock(0, 0.5, 0)} className="px-2.5 py-1 rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-200 text-xs font-bold transition-colors">+0.5</button>
+                  </div>
+                </div>
+              </div>
             </div>
           ) : selectedNode ? (
-            <div className="grid gap-3 rounded-2xl border border-amber-800/50 bg-amber-950/20 p-4 xl:grid-cols-4 shadow-lg">
+            <div className="grid gap-3 rounded-2xl border border-slate-200 dark:border-amber-800/50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md p-4 xl:grid-cols-4 shadow-2xl">
               <div className="flex flex-col">
-                <label className="text-[10px] text-amber-400/70 mb-1 uppercase tracking-wider font-semibold">Node Name</label>
+                <label className="text-[10px] text-slate-500 dark:text-amber-400/70 mb-1 uppercase tracking-wider font-semibold">Node Name</label>
                 <input
-                  className="h-10 rounded bg-slate-900 px-3 border border-slate-800"
+                  className="h-10 rounded bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 px-3 border border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-500"
                   value={selectedNode.nodeName}
                   onChange={(e) => upsertNode({ ...selectedNode, nodeName: e.target.value })}
                   placeholder="Node Name"
                 />
               </div>
               <div className="flex flex-col">
-                <label className="text-[10px] text-amber-400/70 mb-1 uppercase tracking-wider font-semibold">Type</label>
+                <label className="text-[10px] text-slate-500 dark:text-amber-400/70 mb-1 uppercase tracking-wider font-semibold">Type</label>
                 <select
-                  className="h-10 rounded bg-slate-900 px-3 border border-slate-800"
+                  className="h-10 rounded bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 px-3 border border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-500"
                   value={selectedNode.type}
                   onChange={(e) => upsertNode({ ...selectedNode, type: e.target.value as DraftNode["type"] })}
                 >
@@ -286,24 +315,24 @@ export function FloorEditorClient({
                 </select>
               </div>
               <div className="flex flex-col">
-                <label className="text-[10px] text-amber-400/70 mb-1 uppercase tracking-wider font-semibold">Elevation (Y)</label>
+                <label className="text-[10px] text-slate-500 dark:text-amber-400/70 mb-1 uppercase tracking-wider font-semibold">Elevation (Y)</label>
                 <input
                   type="number"
                   step="0.1"
-                  className="h-10 rounded bg-slate-900 px-3 border border-slate-800"
+                  className="h-10 rounded bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 px-3 border border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-500"
                   value={selectedNode.positionY}
                   onChange={(e) => upsertNode({ ...selectedNode, positionY: Number(e.target.value) })}
                 />
               </div>
               <div className="flex flex-col justify-end">
-                <button type="button" className="h-10 text-rose-400 font-medium hover:bg-rose-950/30 rounded border border-rose-900/50 text-sm transition-colors" onClick={() => removeNode(selectedNode.id)}>
+                <button type="button" className="h-10 text-rose-600 hover:bg-rose-50 border border-rose-200 dark:text-rose-400 dark:hover:bg-rose-950/30 dark:border-rose-900/50 rounded font-medium text-sm transition-colors" onClick={() => removeNode(selectedNode.id)}>
                   Delete
                 </button>
               </div>
             </div>
           ) : multiSelected ? (
-            <div className="flex h-full items-center justify-center rounded-2xl border border-sky-800/50 bg-sky-950/20 shadow-lg px-6">
-              <p className="text-sky-300 font-medium">Multiple items selected. Use the 3D gizmo to move them as a group.</p>
+            <div className="flex h-full items-center justify-center rounded-2xl border border-slate-200 dark:border-sky-800/50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-2xl px-6 py-4">
+              <p className="text-sky-700 dark:text-sky-300 font-medium">Multiple items selected. Use the 3D gizmo to move them as a group.</p>
             </div>
           ) : null}
           </div>
@@ -311,12 +340,12 @@ export function FloorEditorClient({
       </div>
 
       {confirmModal && (
-        <div className="fixed inset-0 z-[99999999] flex items-center justify-center bg-black/70 backdrop-blur-md">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 shadow-2xl max-w-md w-full mx-4">
-            <h3 className="text-xl font-bold text-slate-100 mb-2">
+        <div className="fixed inset-0 z-[99999999] flex items-center justify-center bg-black/50 dark:bg-black/70 backdrop-blur-md">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-2xl max-w-md w-full mx-4 text-slate-900 dark:text-slate-100">
+            <h3 className="text-xl font-bold mb-2">
               {confirmModal === "blocks" ? "Clear All Blocks" : "Clear All Nodes"}
             </h3>
-            <p className="text-slate-400 mb-6 text-sm">
+            <p className="text-slate-600 dark:text-slate-400 mb-6 text-sm">
               {confirmModal === "blocks" 
                 ? "Are you sure you want to clear all blocks? Nodes and edges will remain."
                 : "Are you sure you want to clear all nodes and edges? Blocks will remain."}
@@ -324,7 +353,7 @@ export function FloorEditorClient({
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setConfirmModal(null)}
-                className="px-4 py-2 rounded-lg bg-slate-800 text-slate-300 font-medium hover:bg-slate-700 transition-colors"
+                className="px-4 py-2 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 font-medium dark:hover:bg-slate-700 transition-colors"
               >
                 Cancel
               </button>

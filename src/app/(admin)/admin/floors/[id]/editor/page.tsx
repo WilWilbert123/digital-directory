@@ -17,7 +17,7 @@ export default async function FloorEditorPage({ params }: { params: { id: string
   const nodes = floor.pathNodes.map((n) => ({
     id: n.id,
     nodeName: n.nodeName,
-    type: n.type,
+    type: n.type as import("@/lib/pathfinding").PathNodeType,
     positionX: n.positionX,
     positionY: n.positionY,
     positionZ: n.positionZ,
@@ -34,8 +34,8 @@ export default async function FloorEditorPage({ params }: { params: { id: string
 
   return (
     <div>
-      <h1 className="mb-2 text-3xl font-bold">{floor.floorName} editor</h1>
-      <p className="mb-6 text-slate-400">Extrude blocks, drop nodes, and connect walkable edges.</p>
+      <h1 className="mb-2 text-3xl font-bold text-slate-900 dark:text-slate-100">{floor.floorName} editor</h1>
+      <p className="mb-6 text-slate-600 dark:text-slate-400">Extrude blocks, drop nodes, and connect walkable edges.</p>
       <FloorEditorClient
         floorId={floor.id}
         imageUrl={floor.image2dURL}
