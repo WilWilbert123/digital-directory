@@ -9,20 +9,20 @@ export default async function TenantUploadPage() {
   ]);
 
   return (
-    <div className="max-w-xl space-y-6">
+    <div className="max-w-xl space-y-6 text-zinc-900 dark:text-zinc-100">
       <h1 className="text-3xl font-bold">Logo uploader & floor assignment</h1>
-      <form action={saveTenantAction} className="space-y-4 rounded-2xl border border-slate-800 bg-slate-900 p-6">
-        <input name="tenantCode" placeholder="Tenant code" className="h-11 w-full rounded-lg bg-slate-950 px-3" required />
-        <input name="tenantName" placeholder="Tenant name" className="h-11 w-full rounded-lg bg-slate-950 px-3" required />
+      <form action={saveTenantAction} className="space-y-4 rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900/50 shadow-sm">
+        <input name="tenantCode" placeholder="Tenant code" className="h-11 w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 text-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100" required />
+        <input name="tenantName" placeholder="Tenant name" className="h-11 w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 text-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100" required />
         <LogoUploader />
-        <select name="floorId" className="h-11 w-full rounded-lg bg-slate-950 px-3" required>
+        <select name="floorId" className="h-11 w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 text-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100" required>
           {floors.map((f) => (
             <option key={f.id} value={f.id}>
               {f.floorName}
             </option>
           ))}
         </select>
-        <select name="categoryId" className="h-11 w-full rounded-lg bg-slate-950 px-3" required>
+        <select name="categoryId" className="h-11 w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 text-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100" required>
           {categories.map((c) => (
             <option key={c.id} value={c.id}>
               {c.categoryName}
