@@ -42,7 +42,7 @@ export function DirectionLine({ points, color = "#22d3ee" }: { points: Vec3[]; c
   return (
     <group>
       <Tube ref={tube} args={[curve, 64, 0.12, 12, false]} renderOrder={999}>
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={2} toneMapped={false} transparent opacity={0.6} depthTest={false} depthWrite={false} />
+        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={2} toneMapped={false} transparent opacity={0.9} depthTest={false} depthWrite={false} />
       </Tube>
       
       {/* Animated glowing arrow traveling the path */}
