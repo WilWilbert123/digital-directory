@@ -8,6 +8,107 @@ import { DirectionLine } from "@/components/3d/DirectionLine";
 import { FloorModel, type FloorBlockMesh } from "@/components/3d/FloorModel";
 import { HumanAvatar } from "@/components/3d/HumanAvatar";
 import type { GraphNode, PathResult } from "@/lib/pathfinding";
+import * as THREE from "three";
+import { useFrame } from "@react-three/fiber";
+
+function TourGuide({
+  route,
+  isPlayingAnimation,
+  onLevelChange,
+  onComplete,
+  cameraControlsRef,
+}: {
+  route: PathResult | null;
+  isPlayingAnimation: boolean;
+  onLevelChange: (level: number) => void;
+  onComplete: () => void;
+  cameraControlsRef: React.MutableRefObject<any>;
+}) {
+  const groupRef = useRef<THREE.Group>(null);
+  const progressRef = useRef(0);
+  const lastLevelRef = useRef<number | null>(null);
+
+  const totalDistance = useMemo(() => {
+    if (!route) return 0;
+    let dist = 0;
+    for (let i = 0; i < route.polyline.length - 1; i++) {
+       const p1 = route.polyline[i];
+       const p2 = route.polyline[i+1];
+       dist += Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2) + Math.pow(p2.z - p1.z, 2));
+    }
+    return dist;
+  }, [route]);
+
+  useEffect(() => {
+    if (!isPlayingAnimation) {
+      progressRef.current = 0;
+      lastLevelRef.current = null;
+    }
+  }, [isPlayingAnimation]);
+
+  useFrame((state, delta) => {
+    if (!isPlayingAnimation || !route?.found || !groupRef.current) return;
+
+    const speed = 4.5; // Walking speed
+    progressRef.current += speed * delta;
+    
+    let currentDist = 0;
+    let point = new THREE.Vector3();
+    let lookTarget = new THREE.Vector3();
+    let found = false;
+    let currentSegmentIndex = 0;
+
+    for (let i = 0; i < route.polyline.length - 1; i++) {
+       const p1 = new THREE.Vector3(route.polyline[i].x, route.polyline[i].y, route.polyline[i].z);
+       const p2 = new THREE.Vector3(route.polyline[i+1].x, route.polyline[i+1].y, route.polyline[i+1].z);
+       const segDist = p1.distanceTo(p2);
+       
+       if (progressRef.current <= currentDist + segDist) {
+          const t = (progressRef.current - currentDist) / segDist;
+          point.lerpVectors(p1, p2, t);
+          lookTarget.copy(p2);
+          found = true;
+          currentSegmentIndex = i;
+          break;
+       }
+       currentDist += segDist;
+    }
+
+    if (!found) {
+       const lastP = route.polyline[route.polyline.length - 1];
+       point.set(lastP.x, lastP.y, lastP.z);
+       lookTarget.copy(point);
+       if (progressRef.current > totalDistance) {
+         onComplete();
+         progressRef.current = 0;
+       }
+    }
+
+    groupRef.current.position.copy(point);
+    if (found && lookTarget.distanceTo(point) > 0.01) {
+       // Look at the target, but keep Y axis stable to avoid tilting up/down on stairs
+       const targetStable = new THREE.Vector3(lookTarget.x, point.y, lookTarget.z);
+       groupRef.current.lookAt(targetStable);
+    }
+    
+    // Determine the current floor based on the START node of the current segment.
+    // This prevents the floor from switching early if the escalator segment is drawn over a long distance.
+    const currentLevel = Math.round(route.nodes[currentSegmentIndex].position.y / 8) + 1;
+    if (currentLevel !== lastLevelRef.current) {
+       lastLevelRef.current = currentLevel;
+       onLevelChange(currentLevel);
+    }
+  });
+
+  if (!isPlayingAnimation) return null;
+
+  return (
+    <group ref={groupRef}>
+      <HumanAvatar position={[0, 0, 0]} color="#f43f5e" isWalking={true} />
+      <pointLight color="#f43f5e" intensity={1.5} distance={12} position={[0, 3, 0]} />
+    </group>
+  );
+}
 
 export function PathfindingCanvas({
   blocks,
@@ -15,34 +116,77 @@ export function PathfindingCanvas({
   route,
   imageUrl,
   targetLevel,
+  isPlayingAnimation = false,
+  onAnimationComplete,
 }: {
   blocks: FloorBlockMesh[];
   nodes: GraphNode[];
   route: PathResult | null;
   imageUrl?: string | null;
   targetLevel?: number;
+  isPlayingAnimation?: boolean;
+  onAnimationComplete?: () => void;
 }) {
   const start = route?.nodes[0];
   const end = route?.nodes.at(-1);
 
+  const [activeLevel, setActiveLevel] = useState<number>(1);
+
+  // Reset to the start node's floor when a new route is searched
+  useEffect(() => {
+    if (route?.found && route.nodes.length > 0) {
+      const startLevel = Math.round(route.nodes[0].position.y / 8) + 1;
+      setActiveLevel(startLevel);
+    } else {
+      setActiveLevel(1);
+    }
+  }, [route]);
+
   const markers = useMemo(() => {
     return nodes.filter((n) => {
        if (n.type === "WALKWAY") return false;
-       // Only show markers on floors up to the target level
        const nodeLevel = Math.round(n.position.y / 8) + 1;
-       return nodeLevel <= (targetLevel ?? 1);
+       return nodeLevel === activeLevel;
     });
-  }, [nodes, targetLevel]);
+  }, [nodes, activeLevel]);
+
+  const displayPolyline = useMemo(() => {
+    if (!route?.found) return [];
+    
+    // Only show the path for the currently active floor
+    const levelNodes = route.nodes.filter(n => {
+       const nodeLevel = Math.round(n.position.y / 8) + 1;
+       return nodeLevel === activeLevel;
+    });
+    
+    // Connect to the escalator/elevator if it transitions
+    if (levelNodes.length > 0) {
+       const lastLevelNode = levelNodes[levelNodes.length - 1];
+       const nextIndex = route.nodes.indexOf(lastLevelNode) + 1;
+       if (nextIndex < route.nodes.length) {
+          levelNodes.push(route.nodes[nextIndex]);
+       }
+    }
+
+    return levelNodes.map(n => n.position);
+  }, [route, activeLevel]);
   
   const cameraControlsRef = useRef<any>(null);
-  const [viewMode, setViewMode] = useState<"IMMERSIVE" | "TOP">("TOP");
+  const [viewMode, setViewMode] = useState<"IMMERSIVE" | "TOP">("IMMERSIVE");
 
   useEffect(() => {
     if (!cameraControlsRef.current) return;
     
-    const avgY = route?.nodes?.length 
-      ? route.nodes.reduce((acc, n) => acc + n.position.y, 0) / route.nodes.length 
-      : 0;
+    let focusNodes = route?.nodes || [];
+    
+    if (route?.nodes) {
+       focusNodes = route.nodes.filter(n => Math.round(n.position.y / 8) + 1 === activeLevel);
+    }
+    
+    let avgY = (activeLevel - 1) * 8; // Default to floor height
+    if (focusNodes.length > 0) {
+      avgY = focusNodes.reduce((acc, n) => acc + n.position.y, 0) / focusNodes.length;
+    }
       
     if (viewMode === "TOP") {
       // Look straight down from high up, centered on the active floor
@@ -51,7 +195,7 @@ export function PathfindingCanvas({
       // Angled top-down immersive view, centered on the active floor
       cameraControlsRef.current.setLookAt(0, 40 + avgY, 45, 0, avgY, 0, true);
     }
-  }, [viewMode, route]);
+  }, [viewMode, route, activeLevel]);
 
   return (
     <div className="absolute inset-0 w-full h-full overflow-hidden bg-black">
@@ -88,13 +232,28 @@ export function PathfindingCanvas({
         </button>
       </div>
 
+      {/* Tour Guide Floor Indicator */}
+      {isPlayingAnimation && (
+        <div className="absolute top-8 left-1/2 -translate-x-1/2 z-20 flex items-center justify-center pointer-events-none animate-in slide-in-from-top-4 fade-in duration-500">
+          <span className="text-white/90 font-extrabold tracking-widest text-2xl uppercase drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)]">
+            Floor {activeLevel}
+          </span>
+        </div>
+      )}
+
       <Canvas shadows gl={{ antialias: true }}>
         <color attach="background" args={["#020617"]} />
-        <PerspectiveCamera makeDefault position={[0, 65, 0.1]} fov={45} />
+        <PerspectiveCamera makeDefault position={[0, 40, 45]} fov={45} />
         <ambientLight intensity={0.45} />
         <directionalLight position={[12, 20, 8]} intensity={1.4} castShadow />
         <Suspense fallback={<Html center>Loading 3D map…</Html>}>
-          <FloorModel blocks={blocks} imageUrl={imageUrl} targetLevel={targetLevel ?? 1} />
+          <FloorModel 
+            blocks={blocks} 
+            imageUrl={imageUrl} 
+            targetLevel={activeLevel} 
+            strictLevel={activeLevel}
+            forceColor="#334155" 
+          />
           {markers.map((n) => (
             n.type === "KIOSK_START" ? (
               <HumanAvatar key={n.id} position={[n.position.x, 0, n.position.z]} color="#22c55e" />
@@ -108,8 +267,8 @@ export function PathfindingCanvas({
               </Sphere>
             )
           ))}
-          {route?.found ? <DirectionLine points={route.polyline} /> : null}
-          {end ? (
+          {route?.found ? <DirectionLine points={displayPolyline} /> : null}
+          {end && !isPlayingAnimation ? (
             <Html position={[end.position.x, end.position.y + 1.5, end.position.z]} center style={{ pointerEvents: "none" }}>
               <div className="flex flex-col items-center justify-center animate-bounce drop-shadow-[0_0_8px_rgba(239,68,68,0.8)]">
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
@@ -119,6 +278,15 @@ export function PathfindingCanvas({
               </div>
             </Html>
           ) : null}
+          
+          <TourGuide 
+            route={route} 
+            isPlayingAnimation={isPlayingAnimation} 
+            onLevelChange={setActiveLevel}
+            onComplete={() => onAnimationComplete?.()}
+            cameraControlsRef={cameraControlsRef}
+          />
+          
           <Environment preset="city" />
         </Suspense>
         
