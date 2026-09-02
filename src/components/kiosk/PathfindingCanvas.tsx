@@ -249,7 +249,7 @@ export function PathfindingCanvas({
         <Suspense fallback={<Html center>Loading 3D map…</Html>}>
           <FloorModel 
             blocks={blocks} 
-            imageUrl={imageUrl} 
+            imageUrl={blocks.length > 0 ? null : imageUrl} 
             targetLevel={activeLevel} 
             strictLevel={activeLevel}
             forceColor="#334155" 
