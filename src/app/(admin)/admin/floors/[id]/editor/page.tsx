@@ -33,17 +33,16 @@ export default async function FloorEditorPage({ params }: { params: { id: string
   );
 
   return (
-    <div>
-      <h1 className="mb-2 text-3xl font-bold text-slate-900 dark:text-slate-100">{floor.floorName} editor</h1>
-      <p className="mb-6 text-slate-600 dark:text-slate-400">Extrude blocks, drop nodes, and connect walkable edges.</p>
+    <div className="h-full flex flex-col">
       <FloorEditorClient
         floorId={floor.id}
+        floorName={floor.floorName}
         imageUrl={floor.image2dURL}
         tenants={tenants}
         initial={{
           blocks: floor.floorBlocks.map(b => ({
             ...b,
-            shape: b.shape as "BOX" | "CYLINDER"
+            shape: b.shape as "BOX" | "CYLINDER" | "WEDGE"
           })),
           nodes,
           edges,

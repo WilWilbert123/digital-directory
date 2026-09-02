@@ -13,6 +13,7 @@ export type FloorBlockMesh = {
   scaleX: number;
   scaleY: number;
   scaleZ: number;
+  rotationY?: number;
   shape?: string;
   color?: string;
   selected?: boolean;
@@ -93,6 +94,7 @@ export function FloorModel({
         <mesh
           key={block.id}
           position={[block.posX, block.posY + block.scaleY / 2, block.posZ]}
+          rotation={[0, block.rotationY ?? 0, 0]}
           scale={[block.scaleX, block.scaleY, block.scaleZ]}
           castShadow
           onPointerDown={(e) => {
@@ -103,6 +105,8 @@ export function FloorModel({
         >
           {block.shape === "CYLINDER" ? (
             <cylinderGeometry args={[0.5, 0.5, 1, 32]} />
+          ) : block.shape === "WEDGE" ? (
+            <cylinderGeometry args={[0.5, 0.5, 1, 32, 1, false, 0, Math.PI / 2]} />
           ) : (
             <boxGeometry args={[1, 1, 1]} />
           )}

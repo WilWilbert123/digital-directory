@@ -9,11 +9,13 @@ const TYPES: DraftNode["type"][] = ["WALKWAY", "TENANT_ENTRANCE", "ELEVATOR", "E
 
 export function FloorEditorClient({
   floorId,
+  floorName,
   imageUrl,
   initial,
   tenants,
 }: {
   floorId: string;
+  floorName: string;
   imageUrl?: string | null;
   initial: { blocks: DraftBlock[]; nodes: DraftNode[]; edges: DraftEdge[] };
   tenants: { id: string; tenantName: string; category: { colorHex: string } }[];
@@ -31,12 +33,14 @@ export function FloorEditorClient({
   const removeBlock = useAdminStore((s) => s.removeBlock);
   const removeNode = useAdminStore((s) => s.removeNode);
   const scaleSelectedBlock = useAdminStore((s) => s.scaleSelectedBlock);
+  const rotateSelectedBlock = useAdminStore((s) => s.rotateSelectedBlock);
   const dirty = useAdminStore((s) => s.dirty);
   const markClean = useAdminStore((s) => s.markClean);
   const [pending, start] = useTransition();
   const [confirmModal, setConfirmModal] = useState<"blocks" | "nodes" | null>(null);
   const [generating, setGenerating] = useState(false);
   const [showMap, setShowMap] = useState(true);
+  const [isPanelOpen, setIsPanelOpen] = useState(true);
 
   useEffect(() => {
     hydrate(initial);
@@ -69,7 +73,7 @@ export function FloorEditorClient({
   const multiSelected = selectedBlockIds.length > 1 || selectedNodeIds.length > 1 || (selectedBlockIds.length > 0 && selectedNodeIds.length > 0);
 
   return (
-    <div className="flex h-[calc(100vh-10rem)] min-h-[600px] flex-col gap-4">
+    <div className="flex h-[calc(100vh-6rem)] min-h-[600px] flex-col gap-2">
       <div className="flex-none flex flex-wrap gap-2 items-center p-3 rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
         {(["select", "marquee", "block", "node", "edge"] as const).map((t) => (
           <button
@@ -264,144 +268,188 @@ export function FloorEditorClient({
 
       <div className="flex-1 min-h-0 flex flex-col relative">
         {/* Unified 3D Editor */}
-        <div className="flex-1 min-h-0 shadow-lg relative">
+        <div className="flex-1 min-h-0 shadow-lg relative overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800">
+          <div className="absolute top-4 left-4 z-10 pointer-events-none">
+            <h1 className="text-xl md:text-2xl font-black text-slate-800 dark:text-white drop-shadow-md tracking-tight">{floorName} editor</h1>
+          </div>
           <UnifiedFloorEditor imageUrl={showMap ? imageUrl : null} tenantColors={tenantColors} />
         </div>
-
-        {/* Floating/Bottom Property Panel */}
+        {/* Floating Right Property Panel */}
         {(selectedBlock || selectedNode || multiSelected) && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-full max-w-5xl px-4 z-10">
-            {selectedBlock ? (
-            <div className="grid gap-3 rounded-2xl border border-slate-200 dark:border-sky-800/50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md p-4 xl:grid-cols-7 shadow-2xl">
-              <div className="flex flex-col xl:col-span-2">
-                <label className="text-[10px] text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider font-semibold">Block Name</label>
-                <input
-                  className="h-10 rounded bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 px-3 border border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500"
-                  value={selectedBlock.blockName}
-                  onChange={(e) => upsertBlock({ ...selectedBlock, blockName: e.target.value })}
-                  placeholder="Block Name"
-                />
-              </div>
-              <div className="flex flex-col xl:col-span-2">
-                <label className="text-[10px] text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider font-semibold">Tenant</label>
-                <select
-                  className="h-10 rounded bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 px-3 border border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500"
-                  value={selectedBlock.tenantId ?? ""}
-                  onChange={(e) => upsertBlock({ ...selectedBlock, tenantId: e.target.value || null })}
-                >
-                  <option value="">Unassigned</option>
-                  {tenants.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.tenantName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex flex-col xl:col-span-1">
-                <label className="text-[10px] text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider font-semibold">Shape</label>
-                <select
-                  className="h-10 rounded bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 px-3 border border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500"
-                  value={selectedBlock.shape ?? "BOX"}
-                  onChange={(e) => upsertBlock({ ...selectedBlock, shape: e.target.value as "BOX" | "CYLINDER" })}
-                >
-                  <option value="BOX">Square</option>
-                  <option value="CYLINDER">Circle</option>
-                </select>
-              </div>
-              <div className="flex flex-col xl:col-span-1">
-                <label className="text-[10px] text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider font-semibold">Elevation (Y)</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  placeholder="Elevation (Y)"
-                  className="h-10 rounded bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 px-3 border border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500"
-                  value={selectedBlock.posY}
-                  onChange={(e) => upsertBlock({ ...selectedBlock, posY: Number(e.target.value) })}
-                />
-              </div>
-              <div className="flex flex-col">
-                <label className="text-[10px] text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider font-semibold">Height</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  min="0.1"
-                  className="h-10 rounded bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 px-3 border border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500"
-                  value={selectedBlock.scaleY}
-                  onChange={(e) => upsertBlock({ ...selectedBlock, scaleY: Number(e.target.value) })}
-                />
-              </div>
-              <div className="flex flex-col justify-end">
-                <button type="button" className="h-10 text-rose-600 hover:bg-rose-50 border border-rose-200 dark:text-rose-400 dark:hover:bg-rose-950/30 dark:border-rose-900/50 rounded font-medium text-sm transition-colors" onClick={() => removeBlock(selectedBlock.id)}>
-                  Delete
-                </button>
-              </div>
+          <div className="absolute top-4 right-4 z-10 flex flex-col items-end gap-2 w-80 pointer-events-none">
+            <div className="pointer-events-auto">
+              <button 
+                onClick={() => setIsPanelOpen(!isPanelOpen)}
+                className="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg text-sm font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 transition-colors flex items-center gap-2"
+              >
+                {isPanelOpen ? (
+                  <>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                    Hide Properties
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                    Show Properties
+                  </>
+                )}
+              </button>
+            </div>
+            
+            {isPanelOpen && (
+              <div className="w-full pointer-events-auto flex flex-col gap-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-3 shadow-xl">
+                {selectedBlock ? (
+                  <>
+                    <div className="flex flex-col gap-1.5">
+                      <div className="flex gap-2">
+                        <div className="flex-1">
+                          <label className="text-[9px] text-slate-500 dark:text-slate-400 mb-0.5 uppercase tracking-wider font-semibold block">Block Name</label>
+                          <input
+                            className="w-full h-7 text-xs rounded bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 px-2 border border-slate-300 dark:border-slate-700 focus:outline-none"
+                            value={selectedBlock.blockName}
+                            onChange={(e) => upsertBlock({ ...selectedBlock, blockName: e.target.value })}
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <label className="text-[9px] text-slate-500 dark:text-slate-400 mb-0.5 uppercase tracking-wider font-semibold block">Tenant</label>
+                          <select
+                            className="w-full h-7 text-xs rounded bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 px-1 border border-slate-300 dark:border-slate-700 focus:outline-none"
+                            value={selectedBlock.tenantId ?? ""}
+                            onChange={(e) => upsertBlock({ ...selectedBlock, tenantId: e.target.value || null })}
+                          >
+                            <option value="">Unassigned</option>
+                            {tenants.map((t) => (
+                              <option key={t.id} value={t.id}>{t.tenantName}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <div className="flex-1">
+                          <label className="text-[9px] text-slate-500 dark:text-slate-400 mb-0.5 uppercase tracking-wider font-semibold block">Shape</label>
+                          <select
+                            className="w-full h-7 text-xs rounded bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 px-1 border border-slate-300 dark:border-slate-700 focus:outline-none"
+                            value={selectedBlock.shape ?? "BOX"}
+                            onChange={(e) => upsertBlock({ ...selectedBlock, shape: e.target.value as "BOX" | "CYLINDER" | "WEDGE" })}
+                          >
+                            <option value="BOX">Square</option>
+                            <option value="CYLINDER">Circle</option>
+                            <option value="WEDGE">Curved</option>
+                          </select>
+                        </div>
+                        <div className="flex-1">
+                          <label className="text-[9px] text-slate-500 dark:text-slate-400 mb-0.5 uppercase tracking-wider font-semibold block">Elevation (Y)</label>
+                          <input
+                            type="number" step="0.1"
+                            className="w-full h-7 text-xs rounded bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 px-2 border border-slate-300 dark:border-slate-700 focus:outline-none"
+                            value={selectedBlock.posY}
+                            onChange={(e) => upsertBlock({ ...selectedBlock, posY: Number(e.target.value) })}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Scale Controls */}
+                    <div className="pt-1.5 border-t border-slate-200 dark:border-slate-800">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300">Quick Scale</span>
+                      </div>
+                      <div className="grid gap-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-semibold text-slate-500">Width (X) {selectedBlock.scaleX}</span>
+                          <div className="flex gap-1">
+                            <button type="button" onClick={() => scaleSelectedBlock(-0.5, 0, 0)} className="w-6 h-5 flex items-center justify-center rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 border border-slate-300 dark:border-slate-700 text-xs font-bold">-</button>
+                            <button type="button" onClick={() => scaleSelectedBlock(0.5, 0, 0)} className="w-6 h-5 flex items-center justify-center rounded bg-sky-100 text-sky-800 dark:bg-sky-950/80 dark:text-sky-300 hover:bg-sky-200 border border-sky-200 dark:border-sky-800 text-xs font-bold">+</button>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-semibold text-slate-500">Length (Z) {selectedBlock.scaleZ}</span>
+                          <div className="flex gap-1">
+                            <button type="button" onClick={() => scaleSelectedBlock(0, 0, -0.5)} className="w-6 h-5 flex items-center justify-center rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 border border-slate-300 dark:border-slate-700 text-xs font-bold">-</button>
+                            <button type="button" onClick={() => scaleSelectedBlock(0, 0, 0.5)} className="w-6 h-5 flex items-center justify-center rounded bg-sky-100 text-sky-800 dark:bg-sky-950/80 dark:text-sky-300 hover:bg-sky-200 border border-sky-200 dark:border-sky-800 text-xs font-bold">+</button>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-semibold text-slate-500">Height (Y) {selectedBlock.scaleY}</span>
+                          <div className="flex gap-1">
+                            <button type="button" onClick={() => scaleSelectedBlock(0, -0.5, 0)} className="w-6 h-5 flex items-center justify-center rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 border border-slate-300 dark:border-slate-700 text-xs font-bold">-</button>
+                            <button type="button" onClick={() => scaleSelectedBlock(0, 0.5, 0)} className="w-6 h-5 flex items-center justify-center rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 hover:bg-emerald-200 border border-emerald-200 dark:border-emerald-800 text-xs font-bold">+</button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
 
-              {/* 1-Click Scale Controls Row */}
-              <div className="col-span-full pt-3 border-t border-slate-200 dark:border-slate-800 flex flex-wrap gap-4 items-center justify-between">
-                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">1-Click Scale:</span>
-                <div className="flex flex-wrap gap-3 items-center">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[11px] font-semibold text-slate-500">Width (X):</span>
-                    <button type="button" onClick={() => scaleSelectedBlock(-0.5, 0, 0)} className="px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:bg-slate-200 text-xs font-bold transition-colors">-0.5</button>
-                    <button type="button" onClick={() => scaleSelectedBlock(0.5, 0, 0)} className="px-2.5 py-1 rounded-md bg-sky-100 text-sky-800 dark:bg-sky-950/80 dark:text-sky-300 border border-sky-200 dark:border-sky-800 hover:bg-sky-200 text-xs font-bold transition-colors">+0.5</button>
+                    {/* Rotate Controls */}
+                    <div className="pt-1.5 border-t border-slate-200 dark:border-slate-800">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300">Quick Rotate</span>
+                        <span className="text-[10px] text-slate-400">{Number.isNaN(selectedBlock.rotationY) ? 0 : (selectedBlock.rotationY * (180/Math.PI)).toFixed(0)}°</span>
+                      </div>
+                      <div className="grid grid-cols-4 gap-1">
+                        <button type="button" onClick={() => rotateSelectedBlock(-Math.PI / 12)} className="h-6 flex items-center justify-center rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 border border-slate-300 dark:border-slate-700 text-[10px] font-bold">-15°</button>
+                        <button type="button" onClick={() => rotateSelectedBlock(Math.PI / 12)} className="h-6 flex items-center justify-center rounded bg-indigo-100 text-indigo-800 dark:bg-indigo-950/80 dark:text-indigo-300 hover:bg-indigo-200 border border-indigo-200 dark:border-indigo-800 text-[10px] font-bold">+15°</button>
+                        <button type="button" onClick={() => rotateSelectedBlock(-Math.PI / 2)} className="h-6 flex items-center justify-center rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 border border-slate-300 dark:border-slate-700 text-[10px] font-bold">-90°</button>
+                        <button type="button" onClick={() => rotateSelectedBlock(Math.PI / 2)} className="h-6 flex items-center justify-center rounded bg-fuchsia-100 text-fuchsia-800 dark:bg-fuchsia-950/80 dark:text-fuchsia-300 hover:bg-fuchsia-200 border border-fuchsia-200 dark:border-fuchsia-800 text-[10px] font-bold">+90°</button>
+                      </div>
+                    </div>
+
+                    <div className="pt-1.5 mt-0.5 border-t border-slate-200 dark:border-slate-800">
+                      <button type="button" className="w-full h-7 text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 dark:bg-rose-950/20 dark:text-rose-400 dark:hover:bg-rose-950/40 dark:border-rose-900/50 rounded font-bold text-[10px] transition-colors" onClick={() => removeBlock(selectedBlock.id)}>
+                        Delete Block
+                      </button>
+                    </div>
+                  </>
+                ) : selectedNode ? (
+                  <>
+                    <div className="flex flex-col gap-1.5">
+                      <div>
+                        <label className="text-[9px] text-slate-500 dark:text-amber-400/70 mb-0.5 uppercase tracking-wider font-semibold block">Node Name</label>
+                        <input
+                          className="w-full h-7 text-xs rounded bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 px-2 border border-slate-300 dark:border-slate-700 focus:outline-none"
+                          value={selectedNode.nodeName}
+                          onChange={(e) => upsertNode({ ...selectedNode, nodeName: e.target.value })}
+                          placeholder="Node Name"
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <div className="flex-1">
+                          <label className="text-[9px] text-slate-500 dark:text-amber-400/70 mb-0.5 uppercase tracking-wider font-semibold block">Type</label>
+                          <select
+                            className="w-full h-7 text-xs rounded bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 px-1 border border-slate-300 dark:border-slate-700 focus:outline-none"
+                            value={selectedNode.type}
+                            onChange={(e) => upsertNode({ ...selectedNode, type: e.target.value as DraftNode["type"] })}
+                          >
+                            {TYPES.map((t) => (
+                              <option key={t}>{t}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="flex-1">
+                          <label className="text-[9px] text-slate-500 dark:text-amber-400/70 mb-0.5 uppercase tracking-wider font-semibold block">Elevation</label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            className="w-full h-7 text-xs rounded bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 px-2 border border-slate-300 dark:border-slate-700 focus:outline-none"
+                            value={selectedNode.positionY}
+                            onChange={(e) => upsertNode({ ...selectedNode, positionY: Number(e.target.value) })}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="pt-2 mt-1 border-t border-slate-200 dark:border-slate-800">
+                      <button type="button" className="w-full h-7 text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 dark:bg-rose-950/20 dark:text-rose-400 dark:hover:bg-rose-950/40 dark:border-rose-900/50 rounded font-bold text-[10px] transition-colors" onClick={() => removeNode(selectedNode.id)}>
+                        Delete Node
+                      </button>
+                    </div>
+                  </>
+                ) : multiSelected ? (
+                  <div className="py-8 text-center text-sky-700 dark:text-sky-300 font-medium">
+                    Multiple items selected.<br/><br/>
+                    Use the 3D gizmo to move them as a group.
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[11px] font-semibold text-slate-500">Length (Z):</span>
-                    <button type="button" onClick={() => scaleSelectedBlock(0, 0, -0.5)} className="px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:bg-slate-200 text-xs font-bold transition-colors">-0.5</button>
-                    <button type="button" onClick={() => scaleSelectedBlock(0, 0, 0.5)} className="px-2.5 py-1 rounded-md bg-sky-100 text-sky-800 dark:bg-sky-950/80 dark:text-sky-300 border border-sky-200 dark:border-sky-800 hover:bg-sky-200 text-xs font-bold transition-colors">+0.5</button>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[11px] font-semibold text-slate-500">Height (Y):</span>
-                    <button type="button" onClick={() => scaleSelectedBlock(0, -0.5, 0)} className="px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:bg-slate-200 text-xs font-bold transition-colors">-0.5</button>
-                    <button type="button" onClick={() => scaleSelectedBlock(0, 0.5, 0)} className="px-2.5 py-1 rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-200 text-xs font-bold transition-colors">+0.5</button>
-                  </div>
-                </div>
+                ) : null}
               </div>
-            </div>
-          ) : selectedNode ? (
-            <div className="grid gap-3 rounded-2xl border border-slate-200 dark:border-amber-800/50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md p-4 xl:grid-cols-4 shadow-2xl">
-              <div className="flex flex-col">
-                <label className="text-[10px] text-slate-500 dark:text-amber-400/70 mb-1 uppercase tracking-wider font-semibold">Node Name</label>
-                <input
-                  className="h-10 rounded bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 px-3 border border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-500"
-                  value={selectedNode.nodeName}
-                  onChange={(e) => upsertNode({ ...selectedNode, nodeName: e.target.value })}
-                  placeholder="Node Name"
-                />
-              </div>
-              <div className="flex flex-col">
-                <label className="text-[10px] text-slate-500 dark:text-amber-400/70 mb-1 uppercase tracking-wider font-semibold">Type</label>
-                <select
-                  className="h-10 rounded bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 px-3 border border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-500"
-                  value={selectedNode.type}
-                  onChange={(e) => upsertNode({ ...selectedNode, type: e.target.value as DraftNode["type"] })}
-                >
-                  {TYPES.map((t) => (
-                    <option key={t}>{t}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex flex-col">
-                <label className="text-[10px] text-slate-500 dark:text-amber-400/70 mb-1 uppercase tracking-wider font-semibold">Elevation (Y)</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  className="h-10 rounded bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 px-3 border border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-500"
-                  value={selectedNode.positionY}
-                  onChange={(e) => upsertNode({ ...selectedNode, positionY: Number(e.target.value) })}
-                />
-              </div>
-              <div className="flex flex-col justify-end">
-                <button type="button" className="h-10 text-rose-600 hover:bg-rose-50 border border-rose-200 dark:text-rose-400 dark:hover:bg-rose-950/30 dark:border-rose-900/50 rounded font-medium text-sm transition-colors" onClick={() => removeNode(selectedNode.id)}>
-                  Delete
-                </button>
-              </div>
-            </div>
-          ) : multiSelected ? (
-            <div className="flex h-full items-center justify-center rounded-2xl border border-slate-200 dark:border-sky-800/50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-2xl px-6 py-4">
-              <p className="text-sky-700 dark:text-sky-300 font-medium">Multiple items selected. Use the 3D gizmo to move them as a group.</p>
-            </div>
-          ) : null}
+            )}
           </div>
         )}
       </div>

@@ -3,8 +3,20 @@ import { GoogleGenAI, Type } from "@google/genai";
 export async function parseFloorPlanImage(base64Image: string) {
   const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
   
-  const response = await ai.models.generateContent({
-    model: "gemini-3.6-flash",
+  async function callGeminiWithRetry(fn: () => Promise<any>, retries = 3, delay = 1500): Promise<any> {
+    try {
+      return await fn();
+    } catch (error: any) {
+      if (retries > 0 && (error?.status === 503 || error?.code === 503 || error?.message?.includes("503") || error?.status === 429)) {
+        console.warn(`Model busy (503). Retrying in ${delay}ms...`);
+        await new Promise((res) => setTimeout(res, delay));
+        return callGeminiWithRetry(fn, retries - 1, delay * 2);
+      }
+      throw error;
+    }
+  }
+
+  const requestConfig = {
     contents: [
       {
         role: "user",
@@ -62,7 +74,19 @@ Important Coordinate Rules:
         required: ["regions"]
       }
     }
-  });
+  };
+
+  let response;
+  try {
+    response = await callGeminiWithRetry(() => ai.models.generateContent({ model: "gemini-3.6-flash", ...requestConfig }));
+  } catch (err: any) {
+    if (err?.status === 503 || err?.code === 503 || err?.message?.includes("503")) {
+      console.warn("Primary model busy, switching to fallback...");
+      response = await callGeminiWithRetry(() => ai.models.generateContent({ model: "gemini-1.5-flash", ...requestConfig }));
+    } else {
+      throw err;
+    }
+  }
 
   if (!response.text) throw new Error("No response from AI");
   const parsedData = JSON.parse(response.text);

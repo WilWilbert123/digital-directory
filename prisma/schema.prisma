@@ -114,6 +114,7 @@ model FloorBlock {
   scaleX    Float   @default(1)
   scaleY    Float   @default(1)
   scaleZ    Float   @default(1)
+  rotationY Float   @default(0)
   floorId   String
   tenantId  String?
   shape     String  @default("BOX")
