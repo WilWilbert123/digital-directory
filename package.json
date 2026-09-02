@@ -19,10 +19,13 @@
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@ai-sdk/google": "^4.0.62",
+    "@google/genai": "^2.20.0",
     "@prisma/client": "^5.22.0",
     "@react-pdf/renderer": "^4.1.6",
     "@react-three/drei": "^9.117.3",
     "@react-three/fiber": "^8.17.10",
+    "ai": "^7.0.90",
     "bcryptjs": "^2.4.3",
     "clsx": "^2.1.1",
     "docx": "^9.1.0",

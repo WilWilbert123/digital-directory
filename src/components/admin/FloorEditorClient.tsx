@@ -35,6 +35,8 @@ export function FloorEditorClient({
   const markClean = useAdminStore((s) => s.markClean);
   const [pending, start] = useTransition();
   const [confirmModal, setConfirmModal] = useState<"blocks" | "nodes" | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const [showMap, setShowMap] = useState(true);
 
   useEffect(() => {
     hydrate(initial);
@@ -179,6 +181,71 @@ export function FloorEditorClient({
             Load Preset Layout
           </button>
         </div>
+        <div className="flex gap-2 border-l border-slate-300 dark:border-slate-700 pl-4">
+          <button
+            type="button"
+            disabled={generating || !imageUrl}
+            onClick={async () => {
+              if (!imageUrl) return;
+              if (confirm("This will attempt to parse the 2D floor plan into 3D blocks. Existing blocks will NOT be deleted, but you can clear them first. Continue?")) {
+                setGenerating(true);
+                try {
+                  const res = await fetch("/api/parse-floorplan", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ imageUrl }),
+                  });
+                  if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.error || "Failed to parse");
+                  }
+                  const data = await res.json();
+                  if (data.blocks && data.blocks.length > 0) {
+                    const state = useAdminStore.getState();
+                    useAdminStore.setState({
+                      blocks: [...state.blocks, ...data.blocks],
+                      dirty: true
+                    });
+                  } else {
+                    alert("No regions detected in the floor plan.");
+                  }
+                } catch (e: any) {
+                  alert(e.message || "Failed to generate layout");
+                } finally {
+                  setGenerating(false);
+                }
+              }
+            }}
+            className="flex items-center gap-2 rounded-lg bg-fuchsia-100 text-fuchsia-800 hover:bg-fuchsia-200 dark:bg-fuchsia-950/60 dark:text-fuchsia-300 dark:hover:bg-fuchsia-900/80 px-3 py-2 text-sm font-semibold transition-colors border border-fuchsia-300 dark:border-fuchsia-800/50 disabled:opacity-50"
+            title={!imageUrl ? "You must upload a 2D floor plan first" : ""}
+          >
+            {generating ? (
+              <>
+                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                Generating...
+              </>
+            ) : "Auto-Generate 3D Layout"}
+          </button>
+        </div>
+        
+        {imageUrl && (
+          <div className="flex gap-2 border-l border-slate-300 dark:border-slate-700 pl-4">
+            <button
+              type="button"
+              onClick={() => setShowMap(!showMap)}
+              className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors border shadow-sm ${
+                showMap 
+                  ? "bg-slate-100 text-slate-700 hover:bg-slate-200 border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:border-slate-700" 
+                  : "bg-indigo-100 text-indigo-700 border-indigo-300 hover:bg-indigo-200 dark:bg-indigo-900/50 dark:text-indigo-300 dark:border-indigo-700"
+              }`}
+            >
+              {showMap ? "Hide Map" : "Show Map"}
+            </button>
+          </div>
+        )}
 
         <button
           type="button"
@@ -198,7 +265,7 @@ export function FloorEditorClient({
       <div className="flex-1 min-h-0 flex flex-col relative">
         {/* Unified 3D Editor */}
         <div className="flex-1 min-h-0 shadow-lg relative">
-          <UnifiedFloorEditor imageUrl={imageUrl} tenantColors={tenantColors} />
+          <UnifiedFloorEditor imageUrl={showMap ? imageUrl : null} tenantColors={tenantColors} />
         </div>
 
         {/* Floating/Bottom Property Panel */}
