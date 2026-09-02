@@ -16,13 +16,15 @@ export function CategorySelector({ categories }: { categories: CategoryOption[] 
   const setCategoryId = useKioskStore((s) => s.setCategoryId);
 
   return (
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+    <div className="flex overflow-x-auto pb-4 gap-3 no-scrollbar snap-x">
       <button
         type="button"
         onClick={() => setCategoryId(null)}
         className={cn(
-          "rounded-2xl border px-4 py-4 text-left font-semibold",
-          !categoryId ? "border-sky-500 bg-sky-500/15" : "border-kiosk-border bg-kiosk-surface",
+          "shrink-0 snap-start whitespace-nowrap rounded-full border px-8 py-3 font-bold transition-all shadow-md active:scale-95",
+          !categoryId 
+            ? "border-foreground bg-foreground text-background" 
+            : "border-white/10 bg-kiosk-surface hover:bg-white/5",
         )}
       >
         All
@@ -33,12 +35,14 @@ export function CategorySelector({ categories }: { categories: CategoryOption[] 
           type="button"
           onClick={() => setCategoryId(c.id)}
           className={cn(
-            "flex items-center gap-3 rounded-2xl border px-4 py-4 text-left",
-            categoryId === c.id ? "border-sky-500 bg-sky-500/15" : "border-kiosk-border bg-kiosk-surface",
+            "flex shrink-0 snap-start items-center gap-3 whitespace-nowrap rounded-full border px-6 py-3 transition-all shadow-md active:scale-95",
+            categoryId === c.id 
+              ? "border-foreground bg-foreground text-background" 
+              : "border-white/10 bg-kiosk-surface hover:bg-white/5",
           )}
         >
-          <span className="h-4 w-4 rounded-full" style={{ backgroundColor: c.colorHex }} />
-          <span className="font-semibold">{c.categoryName}</span>
+          <span className="h-4 w-4 rounded-full shadow-inner" style={{ backgroundColor: c.colorHex }} />
+          <span className="font-bold">{c.categoryName}</span>
         </button>
       ))}
     </div>

@@ -23,6 +23,7 @@ type KioskState = {
   startNodeId: string | null;
   route: PathResult | null;
   idleSeconds: number;
+  keyboardOpen: boolean;
   setQuery: (q: string) => void;
   appendKey: (key: string) => void;
   backspace: () => void;
@@ -33,6 +34,7 @@ type KioskState = {
   setRoute: (route: PathResult | null) => void;
   tickIdle: () => void;
   resetIdle: () => void;
+  setKeyboardOpen: (open: boolean) => void;
 };
 
 export const useKioskStore = create<KioskState>((set) => ({
@@ -42,7 +44,8 @@ export const useKioskStore = create<KioskState>((set) => ({
   startNodeId: process.env.NEXT_PUBLIC_DEFAULT_START_NODE ?? null,
   route: null,
   idleSeconds: 0,
-  setQuery: (query) => set({ query, idleSeconds: 0 }),
+  keyboardOpen: false,
+  setQuery: (query) => set({ query, idleSeconds: 0, keyboardOpen: true }),
   appendKey: (key) =>
     set((s) => ({
       query: (s.query + key).slice(0, 64),
@@ -56,4 +59,5 @@ export const useKioskStore = create<KioskState>((set) => ({
   setRoute: (route) => set({ route }),
   tickIdle: () => set((s) => ({ idleSeconds: s.idleSeconds + 1 })),
   resetIdle: () => set({ idleSeconds: 0 }),
+  setKeyboardOpen: (keyboardOpen) => set({ keyboardOpen, idleSeconds: 0 }),
 }));
