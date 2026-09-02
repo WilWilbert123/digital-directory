@@ -14,12 +14,12 @@ export default async function TenantsPage({ searchParams }: { searchParams: { ed
   const editingTenant = searchParams.editId ? tenants.find(t => t.id === searchParams.editId) : null;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 text-zinc-900 dark:text-zinc-100">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">{editingTenant ? "Edit Tenant" : "Tenant masterlist"}</h1>
         <div className="flex gap-2">
           {editingTenant && (
-            <Link href="/admin/tenants" className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold">
+            <Link href="/admin/tenants" className="rounded-lg bg-zinc-100 px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700">
               Cancel Edit
             </Link>
           )}
@@ -28,23 +28,23 @@ export default async function TenantsPage({ searchParams }: { searchParams: { ed
           </Link>
         </div>
       </div>
-      <form key={editingTenant?.id ?? 'new'} action={saveTenantAction} className="grid gap-3 rounded-2xl border border-slate-800 bg-slate-900 p-6 md:grid-cols-3">
+      <form key={editingTenant?.id ?? 'new'} action={saveTenantAction} className="grid gap-3 rounded-2xl border border-zinc-200 bg-white p-6 md:grid-cols-3 dark:border-zinc-800 dark:bg-zinc-900/50 shadow-sm">
         {editingTenant && <input type="hidden" name="id" value={editingTenant.id} />}
-        <input name="tenantCode" placeholder="Code" defaultValue={editingTenant?.tenantCode} className="h-11 rounded-lg bg-slate-950 px-3" required />
-        <input name="tenantName" placeholder="Name" defaultValue={editingTenant?.tenantName} className="h-11 rounded-lg bg-slate-950 px-3" required />
-        <input name="logoURL" placeholder="Logo URL" defaultValue={editingTenant?.logoURL ?? ""} className="h-11 rounded-lg bg-slate-950 px-3" />
-        <textarea name="description" placeholder="Description" defaultValue={editingTenant?.description ?? ""} className="h-24 rounded-lg bg-slate-950 px-3 md:col-span-3" />
-        <select name="categoryId" defaultValue={editingTenant?.categoryId} className="h-11 rounded-lg bg-slate-950 px-3" required>
+        <input name="tenantCode" placeholder="Code" defaultValue={editingTenant?.tenantCode} className="h-11 rounded-lg border border-zinc-200 bg-zinc-50 px-3 text-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100" required />
+        <input name="tenantName" placeholder="Name" defaultValue={editingTenant?.tenantName} className="h-11 rounded-lg border border-zinc-200 bg-zinc-50 px-3 text-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100" required />
+        <input name="logoURL" placeholder="Logo URL" defaultValue={editingTenant?.logoURL ?? ""} className="h-11 rounded-lg border border-zinc-200 bg-zinc-50 px-3 text-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100" />
+        <textarea name="description" placeholder="Description" defaultValue={editingTenant?.description ?? ""} className="h-24 rounded-lg border border-zinc-200 bg-zinc-50 px-3 text-zinc-900 md:col-span-3 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100" />
+        <select name="categoryId" defaultValue={editingTenant?.categoryId} className="h-11 rounded-lg border border-zinc-200 bg-zinc-50 px-3 text-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100" required>
           {categories.map((c) => (
             <option key={c.id} value={c.id}>{c.categoryName}</option>
           ))}
         </select>
-        <select name="floorId" defaultValue={editingTenant?.floorId} className="h-11 rounded-lg bg-slate-950 px-3" required>
+        <select name="floorId" defaultValue={editingTenant?.floorId} className="h-11 rounded-lg border border-zinc-200 bg-zinc-50 px-3 text-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100" required>
           {floors.map((f) => (
             <option key={f.id} value={f.id}>{f.floorName}</option>
           ))}
         </select>
-        <select name="entranceNodeId" defaultValue={editingTenant?.entranceNodeId ?? ""} className="h-11 rounded-lg bg-slate-950 px-3">
+        <select name="entranceNodeId" defaultValue={editingTenant?.entranceNodeId ?? ""} className="h-11 rounded-lg border border-zinc-200 bg-zinc-50 px-3 text-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100">
           <option value="">No entrance node (No directions)</option>
           {nodes.map((n) => (
             <option key={n.id} value={n.id}>{n.nodeName}</option>
@@ -60,7 +60,7 @@ export default async function TenantsPage({ searchParams }: { searchParams: { ed
         />
       </form>
       <table className="w-full text-left text-sm">
-        <thead className="text-slate-400">
+        <thead className="text-zinc-500 dark:text-zinc-400">
           <tr>
             <th className="py-2">Code</th>
             <th>Name</th>
@@ -71,7 +71,7 @@ export default async function TenantsPage({ searchParams }: { searchParams: { ed
         </thead>
         <tbody>
           {tenants.map((t) => (
-            <tr key={t.id} className="border-t border-slate-800">
+            <tr key={t.id} className="border-t border-zinc-200 dark:border-zinc-800">
               <td className="py-3">{t.tenantCode}</td>
               <td>
                 {t.tenantName}
