@@ -255,8 +255,9 @@ export async function saveFloorGraphAction(input: {
     scaleX: number;
     scaleY: number;
     scaleZ: number;
+    rotationY: number;
     tenantId: string | null;
-    shape: "BOX" | "CYLINDER";
+    shape: "BOX" | "CYLINDER" | "WEDGE";
   }>;
   nodes: Array<{
     id: string;
@@ -333,6 +334,7 @@ export async function saveFloorGraphAction(input: {
           scaleX: b.scaleX,
           scaleY: b.scaleY,
           scaleZ: b.scaleZ,
+          rotationY: b.rotationY || 0,
           floorId,
           tenantId: b.tenantId,
           shape: b.shape,

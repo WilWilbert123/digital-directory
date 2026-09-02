@@ -14,7 +14,8 @@ export type DraftBlock = {
   scaleX: number;
   scaleY: number;
   scaleZ: number;
-  shape: "BOX" | "CYLINDER";
+  rotationY: number;
+  shape: "BOX" | "CYLINDER" | "WEDGE";
   tenantId: string | null;
 };
 
@@ -69,6 +70,7 @@ type AdminState = {
   loadPresetLayout: (tenantIds: string[]) => void;
   commitHistory: () => void;
   scaleSelectedBlock: (deltaX: number, deltaY: number, deltaZ: number) => void;
+  rotateSelectedBlock: (deltaY: number) => void;
 };
 
 // Helper to push history before mutating state
@@ -201,6 +203,7 @@ export const useAdminStore = create<AdminState>((set) => ({
         scaleX: 2,
         scaleY: 2,
         scaleZ: 2,
+        rotationY: 0,
         shape: "BOX" as const,
         tenantId: null,
       }));
@@ -224,6 +227,7 @@ export const useAdminStore = create<AdminState>((set) => ({
           blockName: `BLK-${blockCount + 1}`,
           posX, posY: 0, posZ,
           scaleX, scaleY: 2, scaleZ,
+          rotationY: 0,
           shape,
           tenantId: getTenant(blockCount)
         });
@@ -364,6 +368,24 @@ export const useAdminStore = create<AdminState>((set) => ({
         scaleX: Number(Math.max(0.2, b.scaleX + deltaX).toFixed(2)),
         scaleY: Number(Math.max(0.2, b.scaleY + deltaY).toFixed(2)),
         scaleZ: Number(Math.max(0.2, b.scaleZ + deltaZ).toFixed(2)),
+      };
+    });
+    return pushHistory(s, { blocks });
+  }),
+
+  rotateSelectedBlock: (deltaY) => set((s) => {
+    if (s.selectedBlockIds.length !== 1) return s;
+    const blockId = s.selectedBlockIds[0];
+    const blocks = s.blocks.map((b) => {
+      if (b.id !== blockId) return b;
+      let currentRot = Number.isNaN(b.rotationY) || b.rotationY == null ? 0 : b.rotationY;
+      let newRot = currentRot + deltaY;
+      // Keep it within 0 to 2*PI roughly
+      if (newRot > Math.PI * 2) newRot -= Math.PI * 2;
+      if (newRot < 0) newRot += Math.PI * 2;
+      return {
+        ...b,
+        rotationY: Number(newRot.toFixed(4)),
       };
     });
     return pushHistory(s, { blocks });
