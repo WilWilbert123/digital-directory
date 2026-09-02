@@ -73,11 +73,18 @@ export async function saveFloorAction(formData: FormData) {
     model3dURL: parsed.model3dURL,
     isActive: parsed.isActive ?? true,
   };
-  const row = parsed.id
-    ? await prisma.floor.update({ where: { id: parsed.id }, data })
-    : await prisma.floor.create({ data });
-  await audit("Floor", parsed.id ? "UPDATE" : "CREATE", row);
-  revalidatePath("/admin/floors");
+  try {
+    const row = parsed.id
+      ? await prisma.floor.update({ where: { id: parsed.id }, data })
+      : await prisma.floor.create({ data });
+    await audit("Floor", parsed.id ? "UPDATE" : "CREATE", row);
+    revalidatePath("/admin/floors");
+  } catch (error: any) {
+    if (error.code === "P2002") {
+      throw new Error(`A floor with this ${error.meta?.target?.[0] || 'code'} already exists.`);
+    }
+    throw error;
+  }
 }
 
 export async function deleteFloorAction(id: string) {
