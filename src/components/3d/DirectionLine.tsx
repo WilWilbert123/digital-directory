@@ -41,17 +41,17 @@ export function DirectionLine({ points, color = "#22d3ee" }: { points: Vec3[]; c
 
   return (
     <group>
-      <Tube ref={tube} args={[curve, 64, 0.12, 12, false]}>
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={2} toneMapped={false} transparent opacity={0.6} />
+      <Tube ref={tube} args={[curve, 64, 0.12, 12, false]} renderOrder={999}>
+        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={2} toneMapped={false} transparent opacity={0.6} depthTest={false} depthWrite={false} />
       </Tube>
       
       {/* Animated glowing arrow traveling the path */}
-      <mesh ref={arrowRef}>
+      <mesh ref={arrowRef} renderOrder={1000}>
         <coneGeometry args={[0.3, 0.8, 16]} />
-        <meshStandardMaterial color="#ffffff" emissive="#ffffff" emissiveIntensity={3} toneMapped={false} />
+        <meshStandardMaterial color="#ffffff" emissive="#ffffff" emissiveIntensity={3} toneMapped={false} depthTest={false} depthWrite={false} />
       </mesh>
       
-      <Line points={curve.getPoints(48)} color="white" lineWidth={1} transparent opacity={0.35} />
+      <Line points={curve.getPoints(48)} color="white" lineWidth={1} transparent opacity={0.35} depthTest={false} renderOrder={999} />
     </group>
   );
 }

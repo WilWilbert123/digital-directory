@@ -25,31 +25,43 @@ export function FloorModel({
   onBlockClick,
   onPlaneClick,
   interactive = false,
+  targetLevel,
 }: {
   imageUrl?: string | null;
   blocks: FloorBlockMesh[];
-  onBlockClick?: (id: string) => void;
+  onBlockClick?: (id: string, append: boolean) => void;
   onPlaneClick?: (point: THREE.Vector3) => void;
   interactive?: boolean;
+  targetLevel?: number;
 }) {
+  const visibleBlocks = blocks.filter(b => (b.levelNumber ?? 1) <= (targetLevel ?? 1));
+  
+  // Create an array of floor indices (0 for L1, 1 for L2, etc) up to targetLevel
+  const floors = Array.from({ length: targetLevel ?? 1 }).map((_, i) => i);
+
   return (
     <group>
-      <gridHelper args={[200, 200, "#334155", "#1e293b"]} position={[0, 0.01, 0]} />
-      <mesh
-        rotation={[-Math.PI / 2, 0, 0]}
-        position={[0, 0, 0]}
-        receiveShadow
-        onPointerDown={(e: ThreeEvent<PointerEvent>) => {
-          if (!interactive) return;
-          e.stopPropagation();
-          onPlaneClick?.(e.point);
-        }}
-      >
-        <planeGeometry args={[200, 200]} />
-        <meshStandardMaterial color="#0b1220" roughness={0.9} />
-      </mesh>
-      {imageUrl && !imageUrl.endsWith(".svg") ? <BlueprintOverlay url={imageUrl} /> : null}
-      {blocks.map((block) => (
+      {floors.map((floorIdx) => (
+        <group key={`floor-plane-${floorIdx}`} position={[0, floorIdx * 8, 0]}>
+          <gridHelper args={[200, 200, "#334155", "#1e293b"]} position={[0, 0.01, 0]} />
+          <mesh
+            rotation={[-Math.PI / 2, 0, 0]}
+            position={[0, 0, 0]}
+            receiveShadow
+            onPointerDown={(e: ThreeEvent<PointerEvent>) => {
+              if (!interactive) return;
+              e.stopPropagation();
+              onPlaneClick?.(e.point);
+            }}
+          >
+            <planeGeometry args={[200, 200]} />
+            <meshStandardMaterial color="#0b1220" roughness={0.9} transparent opacity={0.4} />
+          </mesh>
+          {floorIdx === 0 && imageUrl && !imageUrl.endsWith(".svg") ? <BlueprintOverlay url={imageUrl} /> : null}
+        </group>
+      ))}
+      
+      {visibleBlocks.map((block) => (
         <mesh
           key={block.id}
           position={[block.posX, block.posY + block.scaleY / 2, block.posZ]}
@@ -57,7 +69,7 @@ export function FloorModel({
           castShadow
           onPointerDown={(e) => {
             e.stopPropagation();
-            onBlockClick?.(block.id);
+            onBlockClick?.(block.id, e.shiftKey);
           }}
         >
           {block.shape === "CYLINDER" ? (
@@ -71,8 +83,8 @@ export function FloorModel({
             emissiveIntensity={block.selected ? 1.0 : 0.25} // Slight glow so it's never completely dark
             roughness={0.4}
             metalness={0.1}
-            transparent={true}
-            opacity={0.85} // Slight transparency looks better for floor plans
+            transparent={false}
+            opacity={1.0}
           />
           <Edges 
             linewidth={2} 

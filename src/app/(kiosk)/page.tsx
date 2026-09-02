@@ -18,6 +18,7 @@ export default async function KioskHomePage() {
   const mappedBlocks = blocks.map((b) => ({
     id: b.id,
     blockName: b.blockName,
+    levelNumber: floorLevelMap[b.floorId] || 1,
     posX: b.posX,
     posY: adjustY(b.floorId, b.posY),
     posZ: b.posZ,

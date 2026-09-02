@@ -3,7 +3,7 @@
 import { create } from "zustand";
 import type { PathNodeType } from "@/lib/pathfinding";
 
-export type EditorTool = "select" | "block" | "node" | "edge";
+export type EditorTool = "select" | "marquee" | "block" | "node" | "edge";
 
 export type DraftBlock = {
   id: string;
@@ -39,8 +39,8 @@ type HistorySnapshot = { blocks: DraftBlock[]; nodes: DraftNode[]; edges: DraftE
 
 type AdminState = {
   tool: EditorTool;
-  selectedBlockId: string | null;
-  selectedNodeId: string | null;
+  selectedBlockIds: string[];
+  selectedNodeIds: string[];
   edgeFromId: string | null;
   blocks: DraftBlock[];
   nodes: DraftNode[];
@@ -50,8 +50,10 @@ type AdminState = {
   historyIndex: number;
   setTool: (tool: EditorTool) => void;
   hydrate: (payload: { blocks: DraftBlock[]; nodes: DraftNode[]; edges: DraftEdge[] }) => void;
-  selectBlock: (id: string | null) => void;
-  selectNode: (id: string | null) => void;
+  selectBlock: (id: string | null, append?: boolean) => void;
+  selectNode: (id: string | null, append?: boolean) => void;
+  setSelection: (blockIds: string[], nodeIds: string[]) => void;
+  moveSelection: (dx: number, dz: number) => void;
   upsertBlock: (block: DraftBlock) => void;
   upsertNode: (node: DraftNode) => void;
   addEdge: (edge: DraftEdge) => void;
@@ -84,8 +86,8 @@ const pushHistory = (s: AdminState, nextState: Partial<AdminState>) => {
 
 export const useAdminStore = create<AdminState>((set) => ({
   tool: "select",
-  selectedBlockId: null,
-  selectedNodeId: null,
+  selectedBlockIds: [],
+  selectedNodeIds: [],
   edgeFromId: null,
   blocks: [],
   nodes: [],
@@ -95,9 +97,49 @@ export const useAdminStore = create<AdminState>((set) => ({
   historyIndex: -1,
   
   setTool: (tool) => set({ tool }),
-  hydrate: (payload) => set({ ...payload, dirty: false, history: [], historyIndex: -1, selectedBlockId: null, selectedNodeId: null, edgeFromId: null }),
-  selectBlock: (selectedBlockId) => set({ selectedBlockId, selectedNodeId: null }),
-  selectNode: (selectedNodeId) => set({ selectedNodeId, selectedBlockId: null }),
+  hydrate: (payload) => set({ ...payload, dirty: false, history: [], historyIndex: -1, selectedBlockIds: [], selectedNodeIds: [], edgeFromId: null }),
+  selectBlock: (id, append = false) => set((s) => {
+    if (!id) return { selectedBlockIds: [], selectedNodeIds: [] };
+    if (append) {
+      return { 
+        selectedBlockIds: s.selectedBlockIds.includes(id) ? s.selectedBlockIds.filter(b => b !== id) : [...s.selectedBlockIds, id]
+      };
+    }
+    // If it's already selected and we have multiple things selected, don't deselect everything
+    // This prevents accidental deselection when trying to click near the gizmo
+    if (s.selectedBlockIds.includes(id) && (s.selectedBlockIds.length > 1 || s.selectedNodeIds.length > 0)) {
+      return {};
+    }
+    return { selectedBlockIds: [id], selectedNodeIds: [] };
+  }),
+  selectNode: (id, append = false) => set((s) => {
+    if (!id) return { selectedBlockIds: [], selectedNodeIds: [] };
+    if (append) {
+      return { 
+        selectedNodeIds: s.selectedNodeIds.includes(id) ? s.selectedNodeIds.filter(n => n !== id) : [...s.selectedNodeIds, id]
+      };
+    }
+    if (s.selectedNodeIds.includes(id) && (s.selectedNodeIds.length > 1 || s.selectedBlockIds.length > 0)) {
+      return {};
+    }
+    return { selectedNodeIds: [id], selectedBlockIds: [] };
+  }),
+  setSelection: (selectedBlockIds, selectedNodeIds) => set({ selectedBlockIds, selectedNodeIds }),
+  
+  moveSelection: (dx, dz) => set((s) => {
+    if (s.selectedBlockIds.length === 0 && s.selectedNodeIds.length === 0) return s;
+    const blocks = s.blocks.map((b) => 
+      s.selectedBlockIds.includes(b.id) 
+        ? { ...b, posX: Number((b.posX + dx).toFixed(2)), posZ: Number((b.posZ + dz).toFixed(2)) }
+        : b
+    );
+    const nodes = s.nodes.map((n) => 
+      s.selectedNodeIds.includes(n.id) 
+        ? { ...n, positionX: Number((n.positionX + dx).toFixed(2)), positionZ: Number((n.positionZ + dz).toFixed(2)) }
+        : n
+    );
+    return pushHistory(s, { blocks, nodes });
+  }),
   
   upsertBlock: (block) =>
     set((s) => {
@@ -127,13 +169,13 @@ export const useAdminStore = create<AdminState>((set) => ({
     }),
     
   removeBlock: (id) => 
-    set((s) => pushHistory(s, { blocks: s.blocks.filter((b) => b.id !== id), selectedBlockId: null })),
+    set((s) => pushHistory(s, { blocks: s.blocks.filter((b) => b.id !== id), selectedBlockIds: s.selectedBlockIds.filter(bid => bid !== id) })),
     
   removeNode: (id) =>
     set((s) => pushHistory(s, {
       nodes: s.nodes.filter((n) => n.id !== id),
       edges: s.edges.filter((e) => e.fromNodeId !== id && e.toNodeId !== id),
-      selectedNodeId: null,
+      selectedNodeIds: s.selectedNodeIds.filter(nid => nid !== id),
       edgeFromId: s.edgeFromId === id ? null : s.edgeFromId,
     })),
     
@@ -141,10 +183,10 @@ export const useAdminStore = create<AdminState>((set) => ({
   markClean: () => set({ dirty: false }),
   
   clearBlocks: () =>
-    set((s) => pushHistory(s, { blocks: [], selectedBlockId: null })),
+    set((s) => pushHistory(s, { blocks: [], selectedBlockIds: [] })),
   
   clearGraph: () => 
-    set((s) => pushHistory(s, { nodes: [], edges: [], selectedNodeId: null, edgeFromId: null })),
+    set((s) => pushHistory(s, { nodes: [], edges: [], selectedNodeIds: [], edgeFromId: null })),
 
   addMultipleBlocks: (count, startX, startZ) =>
     set((s) => {
@@ -256,7 +298,7 @@ export const useAdminStore = create<AdminState>((set) => ({
         });
       }
 
-      return pushHistory(s, { blocks, nodes, edges, selectedBlockId: null, selectedNodeId: null, edgeFromId: null });
+      return pushHistory(s, { blocks, nodes, edges, selectedBlockIds: [], selectedNodeIds: [], edgeFromId: null });
     }),
     
   undo: () =>
@@ -276,8 +318,8 @@ export const useAdminStore = create<AdminState>((set) => ({
         edges: prevSnapshot.edges,
         history: newHistory,
         historyIndex: s.historyIndex - 1,
-        selectedBlockId: null,
-        selectedNodeId: null,
+        selectedBlockIds: [],
+        selectedNodeIds: [],
         edgeFromId: null,
         dirty: true,
       };
@@ -301,8 +343,8 @@ export const useAdminStore = create<AdminState>((set) => ({
         nodes: nextSnapshot.nodes,
         edges: nextSnapshot.edges,
         historyIndex: s.historyIndex + 1,
-        selectedBlockId: null,
-        selectedNodeId: null,
+        selectedBlockIds: [],
+        selectedNodeIds: [],
         edgeFromId: null,
         dirty: true,
       };

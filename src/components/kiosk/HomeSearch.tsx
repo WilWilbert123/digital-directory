@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { OnScreenKeyboard } from "@/components/kiosk/OnScreenKeyboard";
