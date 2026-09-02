@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { deleteTenantAction, saveTenantAction } from "@/app/actions/admin";
+import { deleteTenantAction } from "@/app/actions/admin";
 import prisma from "@/lib/prisma";
-import { SubmitButton } from "@/components/admin/SubmitButton";
+import { TenantForm } from "@/components/admin/TenantForm";
 
 export default async function TenantsPage({ searchParams }: { searchParams: { editId?: string } }) {
   const [tenants, floors, categories, nodes] = await Promise.all([
@@ -23,42 +23,17 @@ export default async function TenantsPage({ searchParams }: { searchParams: { ed
               Cancel Edit
             </Link>
           )}
-          <Link href="/admin/tenants/upload" className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold">
+          <Link href="/admin/tenants/upload" className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white">
             Logo uploader
           </Link>
         </div>
       </div>
-      <form key={editingTenant?.id ?? 'new'} action={saveTenantAction} className="grid gap-3 rounded-2xl border border-zinc-200 bg-white p-6 md:grid-cols-3 dark:border-zinc-800 dark:bg-zinc-900/50 shadow-sm">
-        {editingTenant && <input type="hidden" name="id" value={editingTenant.id} />}
-        <input name="tenantCode" placeholder="Code" defaultValue={editingTenant?.tenantCode} className="h-11 rounded-lg border border-zinc-200 bg-zinc-50 px-3 text-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100" required />
-        <input name="tenantName" placeholder="Name" defaultValue={editingTenant?.tenantName} className="h-11 rounded-lg border border-zinc-200 bg-zinc-50 px-3 text-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100" required />
-        <input name="logoURL" placeholder="Logo URL" defaultValue={editingTenant?.logoURL ?? ""} className="h-11 rounded-lg border border-zinc-200 bg-zinc-50 px-3 text-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100" />
-        <textarea name="description" placeholder="Description" defaultValue={editingTenant?.description ?? ""} className="h-24 rounded-lg border border-zinc-200 bg-zinc-50 px-3 text-zinc-900 md:col-span-3 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100" />
-        <select name="categoryId" defaultValue={editingTenant?.categoryId} className="h-11 rounded-lg border border-zinc-200 bg-zinc-50 px-3 text-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100" required>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>{c.categoryName}</option>
-          ))}
-        </select>
-        <select name="floorId" defaultValue={editingTenant?.floorId} className="h-11 rounded-lg border border-zinc-200 bg-zinc-50 px-3 text-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100" required>
-          {floors.map((f) => (
-            <option key={f.id} value={f.id}>{f.floorName}</option>
-          ))}
-        </select>
-        <select name="entranceNodeId" defaultValue={editingTenant?.entranceNodeId ?? ""} className="h-11 rounded-lg border border-zinc-200 bg-zinc-50 px-3 text-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100">
-          <option value="">No entrance node (No directions)</option>
-          {nodes.map((n) => (
-            <option key={n.id} value={n.id}>{n.nodeName}</option>
-          ))}
-        </select>
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" name="isActive" defaultChecked={editingTenant ? editingTenant.isActive : true} /> Active
-        </label>
-        <SubmitButton 
-          idleText={editingTenant ? "Update tenant" : "Save new tenant"} 
-          loadingText="Saving..." 
-          className="h-11 rounded-lg bg-sky-600 font-semibold md:col-span-2" 
-        />
-      </form>
+      <TenantForm
+        editingTenant={editingTenant}
+        categories={categories.map(c => ({ id: c.id, categoryName: c.categoryName }))}
+        floors={floors.map(f => ({ id: f.id, floorName: f.floorName }))}
+        nodes={nodes.map(n => ({ id: n.id, nodeName: n.nodeName }))}
+      />
       <table className="w-full text-left text-sm">
         <thead className="text-zinc-500 dark:text-zinc-400">
           <tr>
