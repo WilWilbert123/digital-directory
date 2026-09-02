@@ -67,6 +67,8 @@ type AdminState = {
   clearGraph: () => void;
   addMultipleBlocks: (count: number, startX: number, startZ: number) => void;
   loadPresetLayout: (tenantIds: string[]) => void;
+  commitHistory: () => void;
+  scaleSelectedBlock: (deltaX: number, deltaY: number, deltaZ: number) => void;
 };
 
 // Helper to push history before mutating state
@@ -349,4 +351,21 @@ export const useAdminStore = create<AdminState>((set) => ({
         dirty: true,
       };
     }),
+
+  commitHistory: () => set((s) => pushHistory(s, {})),
+
+  scaleSelectedBlock: (deltaX, deltaY, deltaZ) => set((s) => {
+    if (s.selectedBlockIds.length !== 1) return s;
+    const blockId = s.selectedBlockIds[0];
+    const blocks = s.blocks.map((b) => {
+      if (b.id !== blockId) return b;
+      return {
+        ...b,
+        scaleX: Number(Math.max(0.2, b.scaleX + deltaX).toFixed(2)),
+        scaleY: Number(Math.max(0.2, b.scaleY + deltaY).toFixed(2)),
+        scaleZ: Number(Math.max(0.2, b.scaleZ + deltaZ).toFixed(2)),
+      };
+    });
+    return pushHistory(s, { blocks });
+  }),
 }));

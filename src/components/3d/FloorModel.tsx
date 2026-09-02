@@ -17,27 +17,35 @@ export type FloorBlockMesh = {
   color?: string;
   selected?: boolean;
   label?: string;
+  levelNumber?: number;
 };
 
 export function FloorModel({
   imageUrl,
   blocks,
   onBlockClick,
+  onBlockPointerDown,
   onPlaneClick,
+  onPlanePointerMove,
   interactive = false,
   targetLevel,
 }: {
   imageUrl?: string | null;
   blocks: FloorBlockMesh[];
   onBlockClick?: (id: string, append: boolean) => void;
+  onBlockPointerDown?: (id: string, point: THREE.Vector3, shiftKey: boolean) => void;
   onPlaneClick?: (point: THREE.Vector3) => void;
+  onPlanePointerMove?: (point: THREE.Vector3) => void;
   interactive?: boolean;
   targetLevel?: number;
 }) {
-  const visibleBlocks = blocks.filter(b => (b.levelNumber ?? 1) <= (targetLevel ?? 1));
+  const visibleBlocks = targetLevel === undefined
+    ? blocks  // no filter – show every floor
+    : blocks.filter(b => (b.levelNumber ?? 1) <= targetLevel);
   
   // Create an array of floor indices (0 for L1, 1 for L2, etc) up to targetLevel
-  const floors = Array.from({ length: targetLevel ?? 1 }).map((_, i) => i);
+  const maxLevel = targetLevel ?? Math.max(1, ...blocks.map(b => b.levelNumber ?? 1));
+  const floors = Array.from({ length: maxLevel }).map((_, i) => i);
 
   return (
     <group>
@@ -52,6 +60,10 @@ export function FloorModel({
               if (!interactive) return;
               e.stopPropagation();
               onPlaneClick?.(e.point);
+            }}
+            onPointerMove={(e: ThreeEvent<PointerEvent>) => {
+              if (!interactive) return;
+              onPlanePointerMove?.(e.point);
             }}
           >
             <planeGeometry args={[200, 200]} />
@@ -69,6 +81,7 @@ export function FloorModel({
           castShadow
           onPointerDown={(e) => {
             e.stopPropagation();
+            onBlockPointerDown?.(block.id, e.point, e.shiftKey);
             onBlockClick?.(block.id, e.shiftKey);
           }}
         >
@@ -78,9 +91,9 @@ export function FloorModel({
             <boxGeometry args={[1, 1, 1]} />
           )}
           <meshStandardMaterial
-            color={block.color ?? "#cbd5e1"} // Light gray default
-            emissive={block.selected ? "#38bdf8" : (block.color ?? "#cbd5e1")} // Glows blue if selected, otherwise emits its own color
-            emissiveIntensity={block.selected ? 1.0 : 0.25} // Slight glow so it's never completely dark
+            color={block.color ?? "#cbd5e1"}
+            emissive={block.selected ? "#38bdf8" : (block.color ?? "#cbd5e1")}
+            emissiveIntensity={block.selected ? 1.0 : 0.25}
             roughness={0.4}
             metalness={0.1}
             transparent={false}

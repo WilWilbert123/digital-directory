@@ -1,12 +1,35 @@
 "use client";
 
-import { Canvas, useThree } from "@react-three/fiber";
-import { Html, Line, MapControls, PerspectiveCamera, Sphere, TransformControls, Edges } from "@react-three/drei";
-import { Suspense, useMemo, useState, useRef, useEffect } from "react";
+
+
+import { Suspense, useMemo, useState, useRef, useCallback, useEffect } from "react";
 import * as THREE from "three";
+import { Canvas, useThree } from "@react-three/fiber";
+import { PerspectiveCamera, MapControls, Html, Edges, Line, Sphere } from "@react-three/drei";
 import { FloorModel } from "@/components/3d/FloorModel";
 import { HumanAvatar } from "@/components/3d/HumanAvatar";
 import { useAdminStore, type DraftNode } from "@/store/useAdminStore";
+
+function DragListener({ isDragging, onFloorPointerMove }: { isDragging: boolean; onFloorPointerMove: (point: THREE.Vector3) => void; }) {
+  const { gl, camera } = useThree();
+  useEffect(() => {
+    if (!isDragging) return;
+    const raycaster = new THREE.Raycaster();
+    const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    const handleMove = (e: PointerEvent) => {
+      const rect = gl.domElement.getBoundingClientRect();
+      const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      const y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera({ x, y }, camera);
+      const intersect = new THREE.Vector3();
+      raycaster.ray.intersectPlane(plane, intersect);
+      onFloorPointerMove(intersect);
+    };
+    window.addEventListener('pointermove', handleMove);
+    return () => window.removeEventListener('pointermove', handleMove);
+  }, [isDragging, onFloorPointerMove, gl, camera]);
+  return null;
+}
 
 const TYPE_COLOR: Record<DraftNode["type"], string> = {
   WALKWAY: "#94a3b8",
@@ -128,6 +151,7 @@ export function UnifiedFloorEditor({
   const setEdgeFrom = useAdminStore((s) => s.setEdgeFrom);
 
   const [transformMode, setTransformMode] = useState<"translate" | "scale">("translate");
+  const [isDraggingTransform, setIsDraggingTransform] = useState(false);
   const [marqueeBounds, setMarqueeBounds] = useState<{ minX: number, maxX: number, minY: number, maxY: number } | null>(null);
 
   const meshes = useMemo(
@@ -146,6 +170,21 @@ export function UnifiedFloorEditor({
   // Calculate the bounding box center of ALL selected items for the TransformControls
   const selectionBounds = useMemo(() => {
     if (selectedBlockIds.length === 0 && selectedNodeIds.length === 0) return null;
+
+    if (selectedBlockIds.length === 1 && selectedNodeIds.length === 0) {
+      const b = blocks.find((blk) => blk.id === selectedBlockIds[0]);
+      if (b) {
+        return {
+          x: b.posX,
+          y: b.posY + b.scaleY / 2,
+          z: b.posZ,
+          width: b.scaleX,
+          height: b.scaleY,
+          depth: b.scaleZ,
+        };
+      }
+    }
+
     let minX = Infinity, minZ = Infinity, maxX = -Infinity, maxZ = -Infinity;
     
     blocks.filter(b => selectedBlockIds.includes(b.id)).forEach(b => {
@@ -161,14 +200,97 @@ export function UnifiedFloorEditor({
     if (minX === Infinity) return null;
     return { 
       x: (minX + maxX) / 2, 
-      y: 0, 
+      y: 0.1, 
       z: (minZ + maxZ) / 2,
       width: Math.max(1, maxX - minX + 0.5),
+      height: 0.2,
       depth: Math.max(1, maxZ - minZ + 0.5)
     };
   }, [blocks, nodes, selectedBlockIds, selectedNodeIds]);
 
+  const transformRef = useRef<any>(null);
+  const singleSelectedBlock = selectedBlockIds.length === 1 && selectedNodeIds.length === 0
+    ? blocks.find(b => b.id === selectedBlockIds[0]) ?? null
+    : null;
+
+  // ─── DRAG STATE ────────────────────────────────────────────────────────────
+  // Store everything in refs so drag handlers never get stale closures and
+  // never cause re-renders that would interrupt the pointer capture.
+  const isDraggingRef = useRef(false);
+  const [isDragging, setIsDragging] = useState(false);
+  // Offset from block center to where the pointer hit the block surface (XZ plane)
+  const dragOffsetRef = useRef<{ x: number; z: number }>({ x: 0, z: 0 });
+  // Starting positions of all selected blocks at drag start
+  const dragBaseRef = useRef<{ id: string; posX: number; posZ: number }[]>([]);
+
+  /** Called when user presses down on a block mesh */
+  const onBlockPointerDown = useCallback((blockId: string, hitPoint: THREE.Vector3, shiftKey: boolean) => {
+    if (tool !== "select") return;
+    // Select the block first
+    selectBlock(blockId, shiftKey);
+    if (shiftKey) return; // multi-select, don't start drag
+
+    // Record offset from block center to hit point in XZ
+    const block = useAdminStore.getState().blocks.find(b => b.id === blockId);
+    if (!block) return;
+    dragOffsetRef.current = { x: hitPoint.x - block.posX, z: hitPoint.z - block.posZ };
+
+    // Snapshot starting positions of all selected blocks (includes the one we just selected)
+    const state = useAdminStore.getState();
+    const selectedIds = state.selectedBlockIds.includes(blockId)
+      ? state.selectedBlockIds
+      : [...state.selectedBlockIds, blockId];
+
+    dragBaseRef.current = state.blocks
+      .filter(b => selectedIds.includes(b.id))
+      .map(b => ({ id: b.id, posX: b.posX, posZ: b.posZ }));
+
+    isDraggingRef.current = true;
+    setIsDragging(true);
+  }, [tool, selectBlock]);
+
+  /** Called on every pointer move over the floor plane */
+  const onFloorPointerMove = useCallback((point: THREE.Vector3) => {
+    if (!isDraggingRef.current || dragBaseRef.current.length === 0) return;
+
+    // The primary block (first in list) follows cursor minus offset
+    const primaryBase = dragBaseRef.current[0];
+    const targetX = point.x - dragOffsetRef.current.x;
+    const targetZ = point.z - dragOffsetRef.current.z;
+    const dxFromBase = targetX - primaryBase.posX;
+    const dzFromBase = targetZ - primaryBase.posZ;
+
+    useAdminStore.setState(s => ({
+      blocks: s.blocks.map(b => {
+        const base = dragBaseRef.current.find(i => i.id === b.id);
+        if (!base) return b;
+        return {
+          ...b,
+          posX: Number((base.posX + dxFromBase).toFixed(2)),
+          posZ: Number((base.posZ + dzFromBase).toFixed(2)),
+        };
+      }),
+      dirty: true,
+    }));
+  }, []);
+
+  /** Called when pointer is released anywhere */
+  const onPointerUp = useCallback(() => {
+    if (!isDraggingRef.current) return;
+    isDraggingRef.current = false;
+    setIsDragging(false);
+    dragBaseRef.current = [];
+    useAdminStore.getState().commitHistory();
+  }, []);
+
+  // Global mouseup so releasing outside the canvas also ends the drag
+  useEffect(() => {
+    window.addEventListener("pointerup", onPointerUp);
+    return () => window.removeEventListener("pointerup", onPointerUp);
+  }, [onPointerUp]);
+
   const onPlaneClick = (point: THREE.Vector3) => {
+    if (isDraggingRef.current) return; // ignore clicks that were actually drags
     if (tool === "block") {
       const id = crypto.randomUUID();
       upsertBlock({
@@ -196,26 +318,15 @@ export function UnifiedFloorEditor({
       });
       selectNode(id);
     } else if (tool === "select") {
-      // Clicked empty space in select mode, clear selection
       setSelection([], []);
     }
   };
 
   const onNodeClick = (id: string, append = false) => {
     if (tool === "edge") {
-      if (!edgeFromId) {
-        setEdgeFrom(id);
-        selectNode(id);
-        return;
-      }
+      if (!edgeFromId) { setEdgeFrom(id); selectNode(id); return; }
       if (edgeFromId !== id) {
-        addEdge({
-          id: crypto.randomUUID(),
-          fromNodeId: edgeFromId,
-          toNodeId: id,
-          weight: 1,
-          isAccessible: true,
-        });
+        addEdge({ id: crypto.randomUUID(), fromNodeId: edgeFromId, toNodeId: id, weight: 1, isAccessible: true });
       }
       return;
     }
@@ -225,59 +336,24 @@ export function UnifiedFloorEditor({
   const handleMarqueeProjected = (projector: (pos: THREE.Vector3) => { x: number, y: number }) => {
     if (!marqueeBounds) return;
     const { minX, maxX, minY, maxY } = marqueeBounds;
-    
-    // Account for canvas offset if there is any
     const canvasRect = document.getElementById("admin-canvas-container")?.getBoundingClientRect();
     const offsetX = canvasRect?.left ?? 0;
     const offsetY = canvasRect?.top ?? 0;
-
     const inside = (pos: THREE.Vector3) => {
       const p = projector(pos);
-      // Wait, mouse clientX/clientY is relative to the viewport.
-      // And useThree's size.width is the canvas width. 
-      // The projector gives us coordinates relative to the TOP-LEFT of the canvas!
-      // But start.x and current.x from onPointerDown are clientX, relative to the VIEWPORT!
-      // So we MUST subtract offsetX/offsetY from the mouse bounds to make them relative to the canvas,
-      // OR add offsetX/offsetY to the projected coordinates.
-      const px = p.x + offsetX;
-      const py = p.y + offsetY;
-      return px >= minX && px <= maxX && py >= minY && py <= maxY;
+      return (p.x + offsetX) >= minX && (p.x + offsetX) <= maxX && (p.y + offsetY) >= minY && (p.y + offsetY) <= maxY;
     };
-
-    const newBlockIds = blocks.filter(b => inside(new THREE.Vector3(b.posX, b.posY, b.posZ))).map(b => b.id);
-    const newNodeIds = nodes.filter(n => inside(new THREE.Vector3(n.positionX, n.positionY, n.positionZ))).map(n => n.id);
-    
-    setSelection(newBlockIds, newNodeIds);
+    setSelection(
+      blocks.filter(b => inside(new THREE.Vector3(b.posX, b.posY, b.posZ))).map(b => b.id),
+      nodes.filter(n => inside(new THREE.Vector3(n.positionX, n.positionY, n.positionZ))).map(n => n.id)
+    );
     setMarqueeBounds(null);
   };
-
-  const transformStartRef = useRef<{x: number, y: number, z: number} | null>(null);
-  const singleSelectedBlock = selectedBlockIds.length === 1 && selectedNodeIds.length === 0 ? blocks.find(b => b.id === selectedBlockIds[0]) : null;
 
   return (
     <div id="admin-canvas-container" className="relative h-full w-full overflow-hidden rounded-2xl border border-slate-700 bg-slate-950">
       
       <MarqueeOverlay isActive={tool === "marquee"} onSelect={setMarqueeBounds} />
-
-      {/* 3D Block Editor Tools Overlay */}
-      {(selectedBlockIds.length > 0 || selectedNodeIds.length > 0) && tool === "select" && (
-        <div className="absolute top-4 left-4 z-20 flex gap-2 rounded-lg bg-black/50 p-2 backdrop-blur">
-          <button 
-            className={`px-3 py-1 text-sm rounded ${transformMode === "translate" ? "bg-sky-600 text-white" : "bg-slate-800 text-slate-300"}`}
-            onClick={() => setTransformMode("translate")}
-          >
-            Move
-          </button>
-          {singleSelectedBlock && (
-            <button 
-              className={`px-3 py-1 text-sm rounded ${transformMode === "scale" ? "bg-emerald-600 text-white" : "bg-slate-800 text-slate-300"}`}
-              onClick={() => setTransformMode("scale")}
-            >
-              Scale
-            </button>
-          )}
-        </div>
-      )}
 
       <Canvas shadows>
         <color attach="background" args={["#020617"]} />
@@ -288,64 +364,50 @@ export function UnifiedFloorEditor({
         {marqueeBounds && <SelectionProjector bounds={marqueeBounds} onProjected={handleMarqueeProjected} />}
 
         <Suspense fallback={<Html center>Loading Unified Editor…</Html>}>
-          {/* Floor & Blocks */}
           <FloorModel
             imageUrl={imageUrl}
             blocks={meshes}
             interactive={tool === "block" || tool === "node" || tool === "select"}
-            onBlockClick={(id, append) => {
-              if (tool === "select") selectBlock(id, append);
-            }}
+            onBlockClick={(id, append) => { if (tool === "select" && !isDragging) selectBlock(id, append); }}
+            onBlockPointerDown={tool === "select" ? onBlockPointerDown : undefined}
             onPlaneClick={onPlaneClick}
           />
+          <DragListener isDragging={isDragging} onFloorPointerMove={onFloorPointerMove} />
 
-          {/* Group Transform Controls */}
-          {selectionBounds && tool === "select" ? (
-            <TransformControls
-              mode={transformMode}
-              showY={false}
-              position={[selectionBounds.x, selectionBounds.y, selectionBounds.z]}
-              onMouseDown={(e) => {
-                const obj = e?.target?.object;
-                if (obj) transformStartRef.current = { x: obj.position.x, y: obj.position.y, z: obj.position.z };
+          {/* Drag capture plane — covers the full floor at Y=0.
+              Uses depthTest=false and renderOrder=999 so it's always "on top" for raycasting.
+              This ensures pointer-move events fire at the correct floor-level XZ coordinates
+              even when the pointer is over a block mesh. */}
+          {isDragging && (
+            <mesh
+              rotation={[-Math.PI / 2, 0, 0]}
+              position={[0, 0.05, 0]}
+              renderOrder={999}
+              onPointerMove={(e) => {
+                e.stopPropagation();
+                onFloorPointerMove(e.point);
               }}
-              onMouseUp={(e) => {
-                const obj = e?.target?.object;
-                if (!obj || !transformStartRef.current) return;
-                
-                if (transformMode === "translate") {
-                  const dx = obj.position.x - transformStartRef.current.x;
-                  const dz = obj.position.z - transformStartRef.current.z;
-                  moveSelection(dx, dz);
-                  
-                  // Reset dummy object back to calculated center to avoid desync
-                  obj.position.set(selectionBounds.x, selectionBounds.y, selectionBounds.z);
-                  
-                } else if (transformMode === "scale" && singleSelectedBlock) {
-                  upsertBlock({
-                    ...singleSelectedBlock,
-                    scaleX: Number((singleSelectedBlock.scaleX * obj.scale.x).toFixed(2)),
-                    scaleY: Number(Math.max(0.1, singleSelectedBlock.scaleY * obj.scale.y).toFixed(2)),
-                    scaleZ: Number((singleSelectedBlock.scaleZ * obj.scale.z).toFixed(2)),
-                  });
-                  obj.scale.set(1, 1, 1);
-                }
-                transformStartRef.current = null;
+              onPointerUp={(e) => {
+                e.stopPropagation();
+                onPointerUp();
               }}
             >
-              <mesh 
-                visible={transformMode === "translate"}
-                onPointerDown={(e) => {
-                  // Prevent the click from hitting the plane and deselecting
-                  e.stopPropagation();
-                }}
-              >
-                <boxGeometry args={[selectionBounds.width, 0.1, selectionBounds.depth]} />
-                <meshBasicMaterial color="#38bdf8" transparent opacity={0.2} depthTest={false} />
-                <Edges color="#38bdf8" />
-              </mesh>
-            </TransformControls>
-          ) : null}
+              <planeGeometry args={[2000, 2000]} />
+              <meshBasicMaterial transparent opacity={0} depthTest={false} depthWrite={false} />
+            </mesh>
+          )}
+
+          {/* Selection outline — purely visual, shows where block is */}
+          {selectionBounds && tool === "select" && (
+            <mesh
+              position={[selectionBounds.x, selectionBounds.y, selectionBounds.z]}
+              raycast={() => null}
+            >
+              <boxGeometry args={[selectionBounds.width + 0.1, selectionBounds.height + 0.05, selectionBounds.depth + 0.1]} />
+              <meshBasicMaterial color={isDragging ? "#f97316" : "#38bdf8"} transparent opacity={isDragging ? 0.2 : 0.1} depthTest={false} />
+              <Edges color={isDragging ? "#f97316" : "#38bdf8"} linewidth={isDragging ? 3 : 2} />
+            </mesh>
+          )}
 
           {/* Pathfinding Edges */}
           {edges.map((e) => {
@@ -402,9 +464,23 @@ export function UnifiedFloorEditor({
           })}
         </Suspense>
         
-        {/* Disable MapControls when marquee is active so we can drag the selection box */}
-        <MapControls makeDefault enabled={tool !== "marquee"} />
+        {/* Disable MapControls when dragging blocks or doing marquee */}
+        <MapControls makeDefault enabled={tool !== "marquee" && !isDragging} />
       </Canvas>
+
+      {/* Drag cursor overlay */}
+      {isDragging && (
+        <div className="absolute inset-0 z-10 cursor-grabbing" onPointerUp={onPointerUp} />
+      )}
+
+      {/* Move/Scale mode buttons (shown when blocks or nodes selected) */}
+      {(selectedBlockIds.length > 0 || selectedNodeIds.length > 0) && tool === "select" && (
+        <div className="absolute top-4 left-4 z-20 flex gap-2 rounded-lg bg-black/50 p-2 backdrop-blur pointer-events-auto">
+          <span className="px-3 py-1 text-sm rounded bg-sky-600/30 border border-sky-600/50 text-sky-300 font-semibold">
+            {isDragging ? "🟠 Dragging…" : "🔵 Drag block to move"}
+          </span>
+        </div>
+      )}
     </div>
   );
 }
