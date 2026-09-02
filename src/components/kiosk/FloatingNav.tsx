@@ -18,14 +18,27 @@ export function FloatingNav() {
   ];
 
   return (
-    <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-4">
+    <div className="fixed top-24 left-8 z-[80] flex flex-col items-start gap-4">
+      <motion.button
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        onClick={() => setOpen(!open)}
+        className={`h-16 w-16 flex items-center justify-center rounded-full shadow-xl transition-colors border ${
+          open 
+            ? "bg-kiosk-surface border-kiosk-border text-foreground" 
+            : "bg-foreground text-background hover:opacity-90"
+        }`}
+      >
+        {open ? <X size={28} /> : <Menu size={28} />}
+      </motion.button>
+
       <AnimatePresence>
         {open && (
           <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.9 }}
+            initial={{ opacity: 0, y: -20, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.9 }}
-            className="flex items-center gap-2 p-3 rounded-3xl bg-black/80 backdrop-blur-xl border border-white/20 shadow-[0_0_40px_rgba(0,0,0,0.5)]"
+            exit={{ opacity: 0, y: -20, scale: 0.9 }}
+            className="flex flex-col gap-2 p-3 rounded-3xl glass-panel shadow-2xl"
           >
             {links.map((link) => {
               const isActive = pathname === link.href;
@@ -36,8 +49,8 @@ export function FloatingNav() {
                   onClick={() => setOpen(false)}
                   className={`flex flex-col items-center gap-1.5 p-4 rounded-2xl transition-all w-24 ${
                     isActive 
-                      ? "bg-sky-500/20 text-sky-400 border border-sky-500/30 shadow-inner" 
-                      : "text-slate-300 hover:bg-white/10 hover:text-white border border-transparent"
+                      ? "bg-foreground text-background" 
+                      : "text-kiosk-muted hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground"
                   }`}
                 >
                   {link.icon}
@@ -48,19 +61,6 @@ export function FloatingNav() {
           </motion.div>
         )}
       </AnimatePresence>
-
-      <motion.button
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        onClick={() => setOpen(!open)}
-        className={`h-16 w-16 flex items-center justify-center rounded-full shadow-[0_0_30px_rgba(0,0,0,0.5)] transition-colors border ${
-          open 
-            ? "bg-slate-800 border-white/20 text-white" 
-            : "bg-sky-600 border-sky-400 text-white hover:bg-sky-500"
-        }`}
-      >
-        {open ? <X size={28} /> : <Menu size={28} />}
-      </motion.button>
     </div>
   );
 }

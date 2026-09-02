@@ -28,7 +28,7 @@ export default async function TenantsPage({ searchParams }: { searchParams: { ed
           </Link>
         </div>
       </div>
-      <form action={saveTenantAction} className="grid gap-3 rounded-2xl border border-slate-800 bg-slate-900 p-6 md:grid-cols-3">
+      <form key={editingTenant?.id ?? 'new'} action={saveTenantAction} className="grid gap-3 rounded-2xl border border-slate-800 bg-slate-900 p-6 md:grid-cols-3">
         {editingTenant && <input type="hidden" name="id" value={editingTenant.id} />}
         <input name="tenantCode" placeholder="Code" defaultValue={editingTenant?.tenantCode} className="h-11 rounded-lg bg-slate-950 px-3" required />
         <input name="tenantName" placeholder="Name" defaultValue={editingTenant?.tenantName} className="h-11 rounded-lg bg-slate-950 px-3" required />
