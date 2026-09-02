@@ -2,7 +2,7 @@
 
 import { Canvas } from "@react-three/fiber";
 import { Environment, Html, CameraControls, PerspectiveCamera, Sphere } from "@react-three/drei";
-import { Suspense, useMemo, useRef, useState } from "react";
+import { Suspense, useMemo, useRef, useState, useEffect } from "react";
 import { Plus, Minus } from "lucide-react";
 import { DirectionLine } from "@/components/3d/DirectionLine";
 import { FloorModel, type FloorBlockMesh } from "@/components/3d/FloorModel";
@@ -14,32 +14,44 @@ export function PathfindingCanvas({
   nodes,
   route,
   imageUrl,
+  targetLevel,
 }: {
   blocks: FloorBlockMesh[];
   nodes: GraphNode[];
   route: PathResult | null;
   imageUrl?: string | null;
+  targetLevel?: number;
 }) {
   const start = route?.nodes[0];
   const end = route?.nodes.at(-1);
 
-  const markers = useMemo(() => nodes.filter((n) => n.type !== "WALKWAY"), [nodes]);
+  const markers = useMemo(() => {
+    return nodes.filter((n) => {
+       if (n.type === "WALKWAY") return false;
+       // Only show markers on floors up to the target level
+       const nodeLevel = Math.round(n.position.y / 8) + 1;
+       return nodeLevel <= (targetLevel ?? 1);
+    });
+  }, [nodes, targetLevel]);
   
   const cameraControlsRef = useRef<any>(null);
   const [viewMode, setViewMode] = useState<"IMMERSIVE" | "TOP">("TOP");
 
-  const setView = (mode: "IMMERSIVE" | "TOP") => {
-    setViewMode(mode);
+  useEffect(() => {
     if (!cameraControlsRef.current) return;
     
-    if (mode === "TOP") {
-      // Look straight down from high up
-      cameraControlsRef.current.setLookAt(0, 65, 0.1, 0, 0, 0, true);
+    const avgY = route?.nodes?.length 
+      ? route.nodes.reduce((acc, n) => acc + n.position.y, 0) / route.nodes.length 
+      : 0;
+      
+    if (viewMode === "TOP") {
+      // Look straight down from high up, centered on the active floor
+      cameraControlsRef.current.setLookAt(0, 75 + avgY, 0.1, 0, avgY, 0, true);
     } else {
-      // Angled top-down immersive view
-      cameraControlsRef.current.setLookAt(0, 43, 49, 0, 0, 0, true);
+      // Angled top-down immersive view, centered on the active floor
+      cameraControlsRef.current.setLookAt(0, 40 + avgY, 45, 0, avgY, 0, true);
     }
-  };
+  }, [viewMode, route]);
 
   return (
     <div className="absolute inset-0 w-full h-full overflow-hidden bg-black">
@@ -48,13 +60,13 @@ export function PathfindingCanvas({
       <div className="absolute top-24 right-6 z-10 flex overflow-hidden rounded-xl border border-slate-700 bg-black/60 shadow-2xl backdrop-blur-md">
         <button
           className={`px-4 py-2 text-sm font-bold tracking-wide transition-colors ${viewMode === "IMMERSIVE" ? "bg-sky-600 text-white" : "text-slate-300 hover:bg-slate-800"}`}
-          onClick={() => setView("IMMERSIVE")}
+          onClick={() => setViewMode("IMMERSIVE")}
         >
           3D IMMERSIVE
         </button>
         <button
           className={`px-4 py-2 text-sm font-bold tracking-wide transition-colors ${viewMode === "TOP" ? "bg-emerald-600 text-white" : "text-slate-300 hover:bg-slate-800"}`}
-          onClick={() => setView("TOP")}
+          onClick={() => setViewMode("TOP")}
         >
           TOP VIEW
         </button>
@@ -82,7 +94,7 @@ export function PathfindingCanvas({
         <ambientLight intensity={0.45} />
         <directionalLight position={[12, 20, 8]} intensity={1.4} castShadow />
         <Suspense fallback={<Html center>Loading 3D map…</Html>}>
-          <FloorModel blocks={blocks} imageUrl={imageUrl} />
+          <FloorModel blocks={blocks} imageUrl={imageUrl} targetLevel={targetLevel ?? 1} />
           {markers.map((n) => (
             n.type === "KIOSK_START" ? (
               <HumanAvatar key={n.id} position={[n.position.x, 0, n.position.z]} color="#22c55e" />

@@ -67,7 +67,7 @@ export async function getWayfindingGraphAction() {
 
   const allEdges = [...edges, ...extraEdges];
 
-  const FLOOR_HEIGHT = 15;
+  const FLOOR_HEIGHT = 8;
   const adjustY = (floorId: string, y: number) => y + ((floorLevelMap[floorId] || 1) - 1) * FLOOR_HEIGHT;
 
   const adjustedNodes = nodes.map(n => ({

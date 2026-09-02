@@ -35,6 +35,13 @@ export function UnifiedDashboard({
 
   const tenant = useMemo(() => tenants.find((t) => t.id === selectedTenantId), [tenants, selectedTenantId]);
   const goal = tenant?.entranceNodeId ?? null;
+  
+  const targetLevel = useMemo(() => {
+    const destLevel = tenant?.floor?.levelNumber ?? 1;
+    const startNode = nodes.find((n) => n.id === startNodeId);
+    const startLevel = startNode ? Math.round(startNode.position.y / 8) + 1 : 1;
+    return Math.max(startLevel, destLevel);
+  }, [tenant, nodes, startNodeId]);
 
   useEffect(() => {
     if (!startNodeId || !goal) {
@@ -58,32 +65,28 @@ export function UnifiedDashboard({
             className="absolute inset-0 z-30 bg-[#0a0a0a]"
           >
             <div className="absolute inset-0">
-              <PathfindingCanvas blocks={blocks} nodes={nodes} route={route} />
+              <PathfindingCanvas blocks={blocks} nodes={nodes} route={route} targetLevel={targetLevel} />
             </div>
             
             {/* Overlay */}
-            <div className="absolute top-8 left-8 z-40 w-96 pointer-events-none">
-                <button 
-                  onClick={() => setSelectedTenant(null)} 
-                  className="pointer-events-auto flex h-14 items-center gap-3 rounded-full bg-white px-6 font-bold text-black shadow-2xl hover:bg-slate-200 active:scale-95 transition-all mb-6"
-                >
-                  <ArrowLeft className="h-6 w-6" /> Back to Stores
-                </button>
+            <div className="absolute top-8 left-8 z-40 flex flex-col gap-4 pointer-events-none">
+                <div className="flex items-center gap-4">
+                  <button 
+                    onClick={() => setSelectedTenant(null)} 
+                    className="pointer-events-auto flex h-14 w-14 items-center justify-center rounded-full bg-black/20 border border-white/10 text-white shadow-2xl backdrop-blur-xl hover:bg-black/40 hover:scale-105 active:scale-95 transition-all"
+                    title="Back to Stores"
+                  >
+                    <ArrowLeft className="h-6 w-6" />
+                  </button>
+                  {tenant && (
+                    <div className="pointer-events-auto rounded-full bg-black/20 border border-white/10 px-6 py-3 backdrop-blur-xl shadow-2xl">
+                      <h2 className="text-lg font-bold text-white tracking-wide">{tenant.tenantName}</h2>
+                    </div>
+                  )}
+                </div>
 
-               {route?.found && (
-                 <div className="rounded-3xl border border-white/10 bg-black/80 p-6 backdrop-blur-xl shadow-2xl pointer-events-auto">
-                    <h2 className="text-xl font-bold text-white mb-4">Directions to {tenant?.tenantName}</h2>
-                    <ol className="space-y-2 text-sm max-h-[60vh] overflow-y-auto pr-2">
-                       {route.steps.map((s) => (
-                         <li key={s.node.id} className="rounded-xl bg-sky-500/10 border border-sky-500/20 px-4 py-3 text-sky-100 font-medium">
-                           {s.instruction}
-                         </li>
-                       ))}
-                    </ol>
-                 </div>
-               )}
                {!route?.found && goal && (
-                  <div className="rounded-3xl border border-rose-500/20 bg-black/80 p-6 backdrop-blur-xl shadow-2xl pointer-events-auto">
+                  <div className="rounded-3xl border border-rose-500/20 bg-black/80 p-6 backdrop-blur-xl shadow-2xl pointer-events-auto max-w-sm">
                     <p className="text-rose-400 font-medium">Cannot find a connected path to this store.</p>
                   </div>
                )}
