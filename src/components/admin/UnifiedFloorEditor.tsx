@@ -156,12 +156,19 @@ export function UnifiedFloorEditor({
 
   const meshes = useMemo(
     () =>
-      blocks.map((b) => ({
-        ...b,
-        color: b.tenantId ? tenantColors[b.tenantId] ?? "#64748b" : "#475569",
-        selected: selectedBlockIds.includes(b.id),
-        label: b.blockName,
-      })),
+      blocks.map((b) => {
+        let emptyColor = "#334155";
+        try {
+          // Simple hash for alternating colors
+          emptyColor = b.id.length > 5 && b.id.charCodeAt(5) % 2 === 0 ? "#334155" : "#94a3b8";
+        } catch(e) {}
+        return {
+          ...b,
+          color: b.tenantId ? tenantColors[b.tenantId] ?? "#64748b" : (b.color || emptyColor),
+          selected: selectedBlockIds.includes(b.id),
+          label: b.blockName,
+        };
+      }),
     [blocks, selectedBlockIds, tenantColors]
   );
 

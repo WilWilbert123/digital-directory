@@ -42,7 +42,7 @@ export default async function FloorEditorPage({ params }: { params: { id: string
         initial={{
           blocks: floor.floorBlocks.map(b => ({
             ...b,
-            shape: b.shape as "BOX" | "CYLINDER" | "WEDGE"
+            shape: b.shape as "BOX" | "CYLINDER" | "WEDGE" | "POLYGON"
           })),
           nodes,
           edges,

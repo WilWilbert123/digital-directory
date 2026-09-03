@@ -15,7 +15,9 @@ export type DraftBlock = {
   scaleY: number;
   scaleZ: number;
   rotationY: number;
-  shape: "BOX" | "CYLINDER" | "WEDGE";
+  shape: "BOX" | "CYLINDER" | "WEDGE" | "POLYGON";
+  pointsData?: string | null;
+  color?: string | null;
   tenantId: string | null;
 };
 

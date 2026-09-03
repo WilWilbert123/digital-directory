@@ -43,11 +43,12 @@ export async function POST(req: NextRequest) {
     const blocks = regions.map((region: any) => {
       let x = 0.5, y = 0.5, w = 0.1, h = 0.1;
       let finalShape = "BOX";
+      let pointsData: string | null = null;
 
       try {
         if (region.shape_type === "circle" && region.center && region.radius) {
-          x = region.center[0];
-          y = region.center[1];
+          x = region.center.x;
+          y = region.center.y;
           w = region.radius * 2;
           h = region.radius * 2;
           finalShape = "CYLINDER";
@@ -58,20 +59,28 @@ export async function POST(req: NextRequest) {
           h = region.bounds[3];
         } else if (region.shape_type === "polygon" && region.points && region.points.length > 0) {
           let minX = 1, maxX = 0, minY = 1, maxY = 0;
-          for (const [px, py] of region.points) {
-            if (px < minX) minX = px;
-            if (px > maxX) maxX = px;
-            if (py < minY) minY = py;
-            if (py > maxY) maxY = py;
+          for (const pt of region.points) {
+            if (pt.x < minX) minX = pt.x;
+            if (pt.x > maxX) maxX = pt.x;
+            if (pt.y < minY) minY = pt.y;
+            if (pt.y > maxY) maxY = pt.y;
           }
           w = maxX - minX;
           h = maxY - minY;
           x = minX + w / 2;
           y = minY + h / 2;
+          
+          finalShape = "POLYGON";
+          const normalizedPoints = region.points.map((pt: any) => {
+             const relX = w > 0 ? (pt.x - x) / w : 0;
+             const relY = h > 0 ? (pt.y - y) / h : 0;
+             return [Number(relX.toFixed(4)), Number(relY.toFixed(4))];
+          });
+          pointsData = JSON.stringify(normalizedPoints);
         } else if (region.centroid) {
           // Fallback to centroid if specific shape data is missing or it's a compound
-          x = region.centroid[0];
-          y = region.centroid[1];
+          x = region.centroid.x;
+          y = region.centroid.y;
           w = 0.1; // Default fallback size
           h = 0.1;
           if (region.outer_shape?.type === "circle" && region.outer_shape.radius) {
@@ -100,6 +109,8 @@ export async function POST(req: NextRequest) {
         scaleZ: Math.max(0.5, Number(scaleZ.toFixed(2))),
         tenantId: null,
         shape: finalShape,
+        pointsData,
+        color: region.color, // Pass down the sampled color
       };
     });
 
