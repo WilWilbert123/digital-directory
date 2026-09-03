@@ -115,7 +115,7 @@ function TourGuide({
     
     // Determine the current floor based on the START node of the current segment.
     // This prevents the floor from switching early if the escalator segment is drawn over a long distance.
-    const currentLevel = Math.round(route.nodes[currentSegmentIndex].position.y / 8) + 1;
+    const currentLevel = Math.round(point.y / 8) + 1;
     if (currentLevel !== lastLevelRef.current) {
        lastLevelRef.current = currentLevel;
        onLevelChange(currentLevel);
@@ -334,6 +334,8 @@ export function PathfindingCanvas({
           {route?.found ? <DirectionLine points={displayPolyline} /> : null}
           {end ? (() => {
              const nodeLevel = Math.round(end.position.y / 8) + 1;
+             if (!isExplodedView && nodeLevel !== activeLevel) return null;
+             
              const stagger = getExplodedStagger(nodeLevel, isExplodedView);
              return (
               <Html position={[end.position.x + stagger.x, end.position.y + 1.5, end.position.z + stagger.z]} center style={{ pointerEvents: "none" }}>

@@ -15,6 +15,7 @@ export type FloorBlockMesh = {
   scaleZ: number;
   rotationY?: number;
   shape?: string;
+  pointsData?: string | null;
   color?: string;
   selected?: boolean;
   label?: string;
@@ -122,7 +123,7 @@ export function FloorModel({
           >
             <planeGeometry args={[bounds.width, bounds.depth]} />
             <meshStandardMaterial 
-              color={interactive ? "#0b1220" : "#27272a"} 
+              color={interactive ? "#0b1220" : forceColor ?? "#8B5FBF"} 
               roughness={0.9} 
               transparent={interactive} 
               opacity={interactive ? 0.4 : 1.0} 
@@ -133,53 +134,103 @@ export function FloorModel({
         );
       })}
       
-      {visibleBlocks.map((block) => {
-        const stagger = getExplodedStagger(block.levelNumber ?? 1, isExplodedView);
-        return (
-        <mesh
-          key={block.id}
-          position={[block.posX + stagger.x, block.posY + block.scaleY / 2, block.posZ + stagger.z]}
-          rotation={[0, block.rotationY ?? 0, 0]}
-          scale={[block.scaleX, block.scaleY, block.scaleZ]}
-          castShadow
-          onPointerDown={(e) => {
-            e.stopPropagation();
-            onBlockPointerDown?.(block.id, e.point, e.shiftKey);
-            onBlockClick?.(block.id, e.shiftKey);
-          }}
-        >
-          {block.shape === "CYLINDER" ? (
-            <cylinderGeometry args={[0.5, 0.5, 1, 32]} />
-          ) : block.shape === "WEDGE" ? (
-            <cylinderGeometry args={[0.5, 0.5, 1, 32, 1, false, 0, Math.PI / 2]} />
-          ) : (
-            <boxGeometry args={[1, 1, 1]} />
-          )}
-          <meshStandardMaterial
-            color={forceColor ?? block.color ?? "#e2e8f0"}
-            emissive={block.selected ? "#38bdf8" : (forceColor ?? block.color ?? "#e2e8f0")}
-            emissiveIntensity={block.selected ? 1.0 : 0.15}
-            roughness={0.7}
-            metalness={0.1}
-            transparent={false}
-            opacity={1.0}
-          />
-          <Edges 
-            linewidth={2} 
-            threshold={15} 
-            color={block.selected ? "#ffffff" : "#475569"} 
-          />
-          {block.label ? (
-            <Html center distanceFactor={18} position={[0, 0.7, 0]}>
-              <div className="whitespace-nowrap rounded-md bg-black/90 border border-white/20 px-3 py-1.5 text-xs font-bold text-white shadow-xl pointer-events-none">
-                {block.label}
-              </div>
-            </Html>
-          ) : null}
-        </mesh>
-        );
-      })}
+      {visibleBlocks.map((block) => (
+         <BlockMesh
+           key={block.id}
+           block={block}
+           isExplodedView={isExplodedView}
+           forceColor={forceColor}
+           onBlockPointerDown={onBlockPointerDown}
+           onBlockClick={onBlockClick}
+         />
+      ))}
     </group>
+  );
+}
+
+import { useMemo } from "react";
+
+function BlockMesh({
+  block,
+  isExplodedView,
+  forceColor,
+  onBlockPointerDown,
+  onBlockClick,
+}: {
+  block: FloorBlockMesh;
+  isExplodedView: boolean;
+  forceColor?: string;
+  onBlockPointerDown?: (id: string, point: THREE.Vector3, shiftKey: boolean) => void;
+  onBlockClick?: (id: string, append: boolean) => void;
+}) {
+  const stagger = getExplodedStagger(block.levelNumber ?? 1, isExplodedView);
+
+  const customGeometry = useMemo(() => {
+    if (block.shape === "POLYGON" && block.pointsData) {
+      try {
+        const points: [number, number][] = JSON.parse(block.pointsData);
+        if (points.length >= 3) {
+          const shape = new THREE.Shape();
+          points.forEach((p, idx) => {
+            // Z goes down in 3D, so we flip Y from the 2D parser
+            if (idx === 0) shape.moveTo(p[0], -p[1]);
+            else shape.lineTo(p[0], -p[1]);
+          });
+          shape.lineTo(points[0][0], -points[0][1]); // close path
+          
+          const g = new THREE.ExtrudeGeometry(shape, {
+            depth: 1,
+            bevelEnabled: false,
+          });
+          // Extrude natively goes along Z. Rotate to lay flat on XZ, and extrude up Y.
+          g.rotateX(Math.PI / 2);
+          g.translate(0, 0.5, 0); // Shift up so bottom rests at y=0, just like our Box
+          return g;
+        }
+      } catch (e) {
+        console.error("Failed to parse polygon points", e);
+      }
+    }
+    return null;
+  }, [block.shape, block.pointsData]);
+
+  return (
+    <mesh
+      position={[block.posX + stagger.x, block.posY + block.scaleY / 2, block.posZ + stagger.z]}
+      rotation={[0, block.rotationY ?? 0, 0]}
+      scale={[block.scaleX, block.scaleY, block.scaleZ]}
+      castShadow
+      onPointerDown={(e) => {
+        e.stopPropagation();
+        onBlockPointerDown?.(block.id, e.point, e.shiftKey);
+        onBlockClick?.(block.id, e.shiftKey);
+      }}
+    >
+      {customGeometry && <primitive object={customGeometry} attach="geometry" />}
+      {!customGeometry && block.shape === "CYLINDER" && <cylinderGeometry args={[0.5, 0.5, 1, 32]} />}
+      {!customGeometry && block.shape === "WEDGE" && <cylinderGeometry args={[0.5, 0.5, 1, 32, 1, false, 0, Math.PI / 2]} />}
+      {!customGeometry && block.shape !== "CYLINDER" && block.shape !== "WEDGE" && <boxGeometry args={[1, 1, 1]} />}
+      
+      <meshStandardMaterial
+        color={forceColor ?? block.color ?? "#e2e8f0"}
+        emissive={block.selected ? "#38bdf8" : (forceColor ?? block.color ?? "#e2e8f0")}
+        emissiveIntensity={block.selected ? 1.0 : 0.15}
+        roughness={0.7}
+        metalness={0.1}
+      />
+      <Edges 
+        linewidth={2} 
+        threshold={15} 
+        color={block.selected ? "#ffffff" : "#475569"} 
+      />
+      {block.label ? (
+        <Html center distanceFactor={18} position={[0, 0.7, 0]}>
+          <div className="whitespace-nowrap rounded-md bg-black/90 border border-white/20 px-3 py-1.5 text-xs font-bold text-white shadow-xl pointer-events-none">
+            {block.label}
+          </div>
+        </Html>
+      ) : null}
+    </mesh>
   );
 }
 
