@@ -5,7 +5,7 @@ import { Environment, Html, CameraControls, PerspectiveCamera, Sphere } from "@r
 import { Suspense, useMemo, useRef, useState, useEffect } from "react";
 import { Plus, Minus } from "lucide-react";
 import { DirectionLine } from "@/components/3d/DirectionLine";
-import { FloorModel, type FloorBlockMesh } from "@/components/3d/FloorModel";
+import { FloorModel, getExplodedStagger, type FloorBlockMesh } from "@/components/3d/FloorModel";
 import { HumanAvatar } from "@/components/3d/HumanAvatar";
 import type { GraphNode, PathResult } from "@/lib/pathfinding";
 import * as THREE from "three";
@@ -14,12 +14,14 @@ import { useFrame } from "@react-three/fiber";
 function TourGuide({
   route,
   isPlayingAnimation,
+  isExplodedView,
   onLevelChange,
   onComplete,
   cameraControlsRef,
 }: {
   route: PathResult | null;
   isPlayingAnimation: boolean;
+  isExplodedView: boolean;
   onLevelChange: (level: number) => void;
   onComplete: () => void;
   cameraControlsRef: React.MutableRefObject<any>;
@@ -57,6 +59,8 @@ function TourGuide({
     let lookTarget = new THREE.Vector3();
     let found = false;
     let currentSegmentIndex = 0;
+    let currentStagger = { x: 0, z: 0 };
+    let targetStagger = { x: 0, z: 0 };
 
     for (let i = 0; i < route.polyline.length - 1; i++) {
        const p1 = new THREE.Vector3(route.polyline[i].x, route.polyline[i].y, route.polyline[i].z);
@@ -67,6 +71,17 @@ function TourGuide({
           const t = (progressRef.current - currentDist) / segDist;
           point.lerpVectors(p1, p2, t);
           lookTarget.copy(p2);
+          
+          const level1 = Math.round(p1.y / 8) + 1;
+          const level2 = Math.round(p2.y / 8) + 1;
+          const stagger1 = getExplodedStagger(level1, isExplodedView);
+          const stagger2 = getExplodedStagger(level2, isExplodedView);
+          currentStagger = {
+             x: THREE.MathUtils.lerp(stagger1.x, stagger2.x, t),
+             z: THREE.MathUtils.lerp(stagger1.z, stagger2.z, t)
+          };
+          targetStagger = stagger2;
+
           found = true;
           currentSegmentIndex = i;
           break;
@@ -78,16 +93,23 @@ function TourGuide({
        const lastP = route.polyline[route.polyline.length - 1];
        point.set(lastP.x, lastP.y, lastP.z);
        lookTarget.copy(point);
+       const level = Math.round(lastP.y / 8) + 1;
+       currentStagger = getExplodedStagger(level, isExplodedView);
+       targetStagger = currentStagger;
+       
        if (progressRef.current > totalDistance) {
          onComplete();
          progressRef.current = 0;
        }
     }
 
-    groupRef.current.position.copy(point);
-    if (found && lookTarget.distanceTo(point) > 0.01) {
+    const finalPoint = new THREE.Vector3(point.x + currentStagger.x, point.y, point.z + currentStagger.z);
+    const finalLookTarget = new THREE.Vector3(lookTarget.x + targetStagger.x, lookTarget.y, lookTarget.z + targetStagger.z);
+
+    groupRef.current.position.copy(finalPoint);
+    if (found && finalLookTarget.distanceTo(finalPoint) > 0.01) {
        // Look at the target, but keep Y axis stable to avoid tilting up/down on stairs
-       const targetStable = new THREE.Vector3(lookTarget.x, point.y, lookTarget.z);
+       const targetStable = new THREE.Vector3(finalLookTarget.x, finalPoint.y, finalLookTarget.z);
        groupRef.current.lookAt(targetStable);
     }
     
@@ -117,6 +139,7 @@ export function PathfindingCanvas({
   imageUrl,
   targetLevel,
   isPlayingAnimation = false,
+  isExplodedView = false,
   onAnimationComplete,
 }: {
   blocks: FloorBlockMesh[];
@@ -125,6 +148,7 @@ export function PathfindingCanvas({
   imageUrl?: string | null;
   targetLevel?: number;
   isPlayingAnimation?: boolean;
+  isExplodedView?: boolean;
   onAnimationComplete?: () => void;
 }) {
   const start = route?.nodes[0];
@@ -145,16 +169,20 @@ export function PathfindingCanvas({
   const markers = useMemo(() => {
     return nodes.filter((n) => {
        if (n.type === "WALKWAY") return false;
+       if (isExplodedView) {
+         // Show the start marker in exploded view
+         return n.id === start?.id;
+       }
        const nodeLevel = Math.round(n.position.y / 8) + 1;
        return nodeLevel === activeLevel;
     });
-  }, [nodes, activeLevel]);
+  }, [nodes, activeLevel, isExplodedView, start]);
 
   const displayPolyline = useMemo(() => {
     if (!route?.found) return [];
     
     // Only show the path for the currently active floor
-    const levelNodes = route.nodes.filter(n => {
+    const levelNodes = isExplodedView ? route.nodes : route.nodes.filter(n => {
        const nodeLevel = Math.round(n.position.y / 8) + 1;
        return nodeLevel === activeLevel;
     });
@@ -168,11 +196,23 @@ export function PathfindingCanvas({
        }
     }
 
-    return levelNodes.map(n => n.position);
-  }, [route, activeLevel]);
+    return levelNodes.map(n => {
+       const nodeLevel = Math.round(n.position.y / 8) + 1;
+       const stagger = getExplodedStagger(nodeLevel, isExplodedView);
+       return new THREE.Vector3(n.position.x + stagger.x, n.position.y, n.position.z + stagger.z);
+    });
+  }, [route, activeLevel, isExplodedView]);
   
   const cameraControlsRef = useRef<any>(null);
   const [viewMode, setViewMode] = useState<"IMMERSIVE" | "TOP">("IMMERSIVE");
+
+  useEffect(() => {
+    if (isExplodedView) {
+      setViewMode("IMMERSIVE");
+    }
+  }, [isExplodedView]);
+
+  const lastViewConfig = useRef({ viewMode: "IMMERSIVE", isExploded: false, hasRoute: false });
 
   useEffect(() => {
     if (!cameraControlsRef.current) return;
@@ -188,14 +228,33 @@ export function PathfindingCanvas({
       avgY = focusNodes.reduce((acc, n) => acc + n.position.y, 0) / focusNodes.length;
     }
       
-    if (viewMode === "TOP") {
-      // Look straight down from high up, centered on the active floor
+    const configChanged = lastViewConfig.current.viewMode !== viewMode || 
+                          lastViewConfig.current.isExploded !== isExplodedView ||
+                          lastViewConfig.current.hasRoute !== !!route;
+
+    if (isExplodedView) {
+      if (configChanged) {
+        const maxLevel = Math.max(1, ...blocks.map(b => b.levelNumber ?? 1));
+        const midY = (maxLevel * 8) / 2;
+        const midZ = ((maxLevel - 1) * -32) / 2;
+        // Offset X by -15 to shift the view slightly right, and increase Z distance
+        cameraControlsRef.current.setLookAt(-15, midY + 70, midZ + 110, -15, midY, midZ, true);
+      }
+    } else if (viewMode === "TOP") {
       cameraControlsRef.current.setLookAt(0, 75 + avgY, 0.1, 0, avgY, 0, true);
     } else {
-      // Angled top-down immersive view, centered on the active floor
-      cameraControlsRef.current.setLookAt(0, 40 + avgY, 45, 0, avgY, 0, true);
+      // Angled top-down immersive view
+      if (configChanged) {
+         // Frame the initial view properly if view mode changed or new route selected
+         cameraControlsRef.current.setLookAt(0, 40 + avgY, 45, 0, avgY, 0, true);
+      } else {
+         // Just pan up/down smoothly to follow the new floor without resetting user's zoom/rotation!
+         cameraControlsRef.current.moveTo(0, avgY, 0, true);
+      }
     }
-  }, [viewMode, route, activeLevel]);
+
+    lastViewConfig.current = { viewMode, isExploded: isExplodedView, hasRoute: !!route };
+  }, [viewMode, route, activeLevel, isExplodedView, blocks]);
 
   return (
     <div className="absolute inset-0 w-full h-full overflow-hidden bg-black">
@@ -250,38 +309,48 @@ export function PathfindingCanvas({
           <FloorModel 
             blocks={blocks} 
             imageUrl={blocks.length > 0 ? null : imageUrl} 
-            targetLevel={activeLevel} 
-            strictLevel={activeLevel}
+            targetLevel={isExplodedView ? undefined : activeLevel} 
+            strictLevel={isExplodedView ? null : activeLevel}
+            isExplodedView={isExplodedView}
             forceColor="#334155" 
           />
-          {markers.map((n) => (
-            n.type === "KIOSK_START" ? (
-              <HumanAvatar key={n.id} position={[n.position.x, 0, n.position.z]} color="#22c55e" />
+          {markers.map((n) => {
+            const nodeLevel = Math.round(n.position.y / 8) + 1;
+            const stagger = getExplodedStagger(nodeLevel, isExplodedView);
+            const pos = [n.position.x + stagger.x, n.position.y, n.position.z + stagger.z];
+            
+            return n.type === "KIOSK_START" ? (
+              <HumanAvatar key={n.id} position={[pos[0], pos[1], pos[2]]} color="#22c55e" />
             ) : (
-              <Sphere key={n.id} args={[0.09, 16, 16]} position={[n.position.x, n.position.y + 0.2, n.position.z]}>
+              <Sphere key={n.id} args={[0.09, 16, 16]} position={[pos[0], pos[1] + 0.2, pos[2]]}>
                 <meshStandardMaterial
                   color={n.type === "TENANT_ENTRANCE" ? "#f59e0b" : "#38bdf8"}
                   emissive="#ffffff"
                   emissiveIntensity={0.15}
                 />
               </Sphere>
-            )
-          ))}
+            );
+          })}
           {route?.found ? <DirectionLine points={displayPolyline} /> : null}
-          {end && !isPlayingAnimation ? (
-            <Html position={[end.position.x, end.position.y + 1.5, end.position.z]} center style={{ pointerEvents: "none" }}>
-              <div className="flex flex-col items-center justify-center animate-bounce drop-shadow-[0_0_8px_rgba(239,68,68,0.8)]">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="4 6 12 14 20 6"></polyline>
-                  <polyline points="4 14 12 22 20 14"></polyline>
-                </svg>
-              </div>
-            </Html>
-          ) : null}
+          {end ? (() => {
+             const nodeLevel = Math.round(end.position.y / 8) + 1;
+             const stagger = getExplodedStagger(nodeLevel, isExplodedView);
+             return (
+              <Html position={[end.position.x + stagger.x, end.position.y + 1.5, end.position.z + stagger.z]} center style={{ pointerEvents: "none" }}>
+                <div className="flex flex-col items-center justify-center animate-bounce drop-shadow-[0_0_8px_rgba(239,68,68,0.8)]">
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="4 6 12 14 20 6"></polyline>
+                    <polyline points="4 14 12 22 20 14"></polyline>
+                  </svg>
+                </div>
+              </Html>
+             );
+          })() : null}
           
           <TourGuide 
             route={route} 
             isPlayingAnimation={isPlayingAnimation} 
+            isExplodedView={isExplodedView}
             onLevelChange={setActiveLevel}
             onComplete={() => onAnimationComplete?.()}
             cameraControlsRef={cameraControlsRef}
@@ -294,10 +363,9 @@ export function PathfindingCanvas({
           ref={cameraControlsRef}
           maxPolarAngle={Math.PI / 2.05} // Prevent going below ground
           minDistance={20} 
-          maxDistance={120}
+          maxDistance={400}
           dollySpeed={1}
-          mouseButtons={{ left: 1, middle: 0, right: 0, wheel: 16 }} // 1=rotate, 16=zoom
-          touches={{ one: 1, two: 512, three: 0 }} // 1=rotate, 512=touch_zoom
+          mouseButtons={{ left: 1, middle: 2, right: 2, wheel: 16 }} // 1=rotate, 2=pan, 16=zoom
           smoothTime={0.4} // Butter smooth transitions
         />
       </Canvas>

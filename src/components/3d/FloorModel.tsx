@@ -21,6 +21,17 @@ export type FloorBlockMesh = {
   levelNumber?: number;
 };
 
+// Calculate stagger offset for exploded view stairs effect
+export const getExplodedStagger = (level: number, isExplodedView: boolean) => {
+  if (!isExplodedView) return { x: 0, z: 0 };
+  const idx = level - 1;
+  // Creates a zig-zag stair effect: left, right, left, right while moving back
+  return { 
+    x: idx % 2 === 0 ? -35 : 35, 
+    z: idx * -32 
+  };
+};
+
 export function FloorModel({
   imageUrl,
   blocks,
@@ -32,6 +43,7 @@ export function FloorModel({
   targetLevel,
   strictLevel,
   forceColor,
+  isExplodedView = false,
 }: {
   imageUrl?: string | null;
   blocks: FloorBlockMesh[];
@@ -43,6 +55,7 @@ export function FloorModel({
   targetLevel?: number;
   strictLevel?: number | null;
   forceColor?: string;
+  isExplodedView?: boolean;
 }) {
   const visibleBlocks = strictLevel != null 
     ? blocks.filter(b => (b.levelNumber ?? 1) === strictLevel)
@@ -59,14 +72,43 @@ export function FloorModel({
     floors = Array.from({ length: maxLevel }).map((_, i) => i);
   }
 
+  // Calculate dynamic bounds for a floor so the plane perfectly covers all its blocks
+  const getFloorBounds = (levelNumber: number) => {
+    const floorBlocks = blocks.filter(b => (b.levelNumber ?? 1) === levelNumber);
+    if (floorBlocks.length === 0) return { width: 45, depth: 45, centerX: 0, centerZ: 0 };
+
+    let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+    floorBlocks.forEach(b => {
+      const halfW = b.scaleX / 2;
+      const halfD = b.scaleZ / 2;
+      minX = Math.min(minX, b.posX - halfW);
+      maxX = Math.max(maxX, b.posX + halfW);
+      minZ = Math.min(minZ, b.posZ - halfD);
+      maxZ = Math.max(maxZ, b.posZ + halfD);
+    });
+
+    const padding = 6; // Add a generous margin around the blocks
+    const width = Math.max(45, (maxX - minX) + padding * 2);
+    const depth = Math.max(45, (maxZ - minZ) + padding * 2);
+    // Only center the plane on the blocks if the bounds actually exceed the default 45x45
+    // Otherwise, keep it centered at 0,0 to align with blueprints
+    const centerX = (maxX - minX) + padding * 2 > 45 ? (minX + maxX) / 2 : 0;
+    const centerZ = (maxZ - minZ) + padding * 2 > 45 ? (minZ + maxZ) / 2 : 0;
+
+    return { width, depth, centerX, centerZ };
+  };
+
   return (
     <group>
-      {floors.map((floorIdx) => (
-        <group key={`floor-plane-${floorIdx}`} position={[0, floorIdx * 8, 0]}>
-          {interactive ? <gridHelper args={[200, 200, "#334155", "#1e293b"]} position={[0, 0.01, 0]} /> : null}
+      {floors.map((floorIdx) => {
+        const stagger = getExplodedStagger(floorIdx + 1, isExplodedView);
+        const bounds = getFloorBounds(floorIdx + 1);
+        return (
+        <group key={`floor-plane-${floorIdx}`} position={[stagger.x, floorIdx * 8, stagger.z]}>
+          {interactive ? <gridHelper args={[bounds.width, bounds.depth, "#334155", "#1e293b"]} position={[bounds.centerX, 0.01, bounds.centerZ]} /> : null}
           <mesh
             rotation={[-Math.PI / 2, 0, 0]}
-            position={[0, 0, 0]}
+            position={[bounds.centerX, 0, bounds.centerZ]}
             receiveShadow
             onPointerDown={(e: ThreeEvent<PointerEvent>) => {
               if (!interactive) return;
@@ -78,9 +120,9 @@ export function FloorModel({
               onPlanePointerMove?.(e.point);
             }}
           >
-            <planeGeometry args={[200, 200]} />
+            <planeGeometry args={[bounds.width, bounds.depth]} />
             <meshStandardMaterial 
-              color={interactive ? "#0b1220" : "#1e293b"} 
+              color={interactive ? "#0b1220" : "#27272a"} 
               roughness={0.9} 
               transparent={interactive} 
               opacity={interactive ? 0.4 : 1.0} 
@@ -88,12 +130,15 @@ export function FloorModel({
           </mesh>
           {floorIdx === 0 && imageUrl && !imageUrl.endsWith(".svg") ? <BlueprintOverlay url={imageUrl} /> : null}
         </group>
-      ))}
+        );
+      })}
       
-      {visibleBlocks.map((block) => (
+      {visibleBlocks.map((block) => {
+        const stagger = getExplodedStagger(block.levelNumber ?? 1, isExplodedView);
+        return (
         <mesh
           key={block.id}
-          position={[block.posX, block.posY + block.scaleY / 2, block.posZ]}
+          position={[block.posX + stagger.x, block.posY + block.scaleY / 2, block.posZ + stagger.z]}
           rotation={[0, block.rotationY ?? 0, 0]}
           scale={[block.scaleX, block.scaleY, block.scaleZ]}
           castShadow
@@ -132,7 +177,8 @@ export function FloorModel({
             </Html>
           ) : null}
         </mesh>
-      ))}
+        );
+      })}
     </group>
   );
 }
