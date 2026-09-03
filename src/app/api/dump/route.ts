@@ -1,12 +1,14 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { graphFromRecords, findPath } from '@/lib/pathfinding';
+import { graphFromRecords, findPath, type PathNodeType } from '@/lib/pathfinding';
 
 export async function GET() {
-  const nodes = await prisma.pathNode.findMany();
+  const rawNodes = await prisma.pathNode.findMany();
   const edges = await prisma.pathEdge.findMany();
   const tenants = await prisma.tenant.findMany();
   const floors = await prisma.floor.findMany();
+  // Cast node types to PathNodeType for type safety
+  const nodes = rawNodes.map((n) => ({ ...n, type: n.type as PathNodeType }));
 
   const floorLevelMap = Object.fromEntries(floors.map(f => [f.id, f.levelNumber]));
 
