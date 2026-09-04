@@ -22,17 +22,6 @@ export type FloorBlockMesh = {
   levelNumber?: number;
 };
 
-// Calculate stagger offset for exploded view stairs effect
-export const getExplodedStagger = (level: number, isExplodedView: boolean) => {
-  if (!isExplodedView) return { x: 0, z: 0 };
-  const idx = level - 1;
-  // Creates a zig-zag stair effect: left, right, left, right while moving back
-  return { 
-    x: idx % 2 === 0 ? -35 : 35, 
-    z: idx * -32 
-  };
-};
-
 export function FloorModel({
   imageUrl,
   blocks,
@@ -44,7 +33,9 @@ export function FloorModel({
   targetLevel,
   strictLevel,
   forceColor,
-  isExplodedView = false,
+  floorColor,
+  blockColor,
+  fixedFloorSize,
 }: {
   imageUrl?: string | null;
   blocks: FloorBlockMesh[];
@@ -56,7 +47,9 @@ export function FloorModel({
   targetLevel?: number;
   strictLevel?: number | null;
   forceColor?: string;
-  isExplodedView?: boolean;
+  floorColor?: string;
+  blockColor?: string;
+  fixedFloorSize?: number;
 }) {
   const visibleBlocks = strictLevel != null 
     ? blocks.filter(b => (b.levelNumber ?? 1) === strictLevel)
@@ -75,6 +68,12 @@ export function FloorModel({
 
   // Calculate dynamic bounds for a floor so the plane perfectly covers all its blocks
   const getFloorBounds = (levelNumber: number) => {
+    // Keep the backend editing surface stable while blocks are added or moved.
+    if (interactive || fixedFloorSize) {
+      const size = fixedFloorSize ?? 45;
+      return { width: size, depth: size, centerX: 0, centerZ: 0 };
+    }
+
     const floorBlocks = blocks.filter(b => (b.levelNumber ?? 1) === levelNumber);
     if (floorBlocks.length === 0) return { width: 45, depth: 45, centerX: 0, centerZ: 0 };
 
@@ -102,10 +101,9 @@ export function FloorModel({
   return (
     <group>
       {floors.map((floorIdx) => {
-        const stagger = getExplodedStagger(floorIdx + 1, isExplodedView);
         const bounds = getFloorBounds(floorIdx + 1);
         return (
-        <group key={`floor-plane-${floorIdx}`} position={[stagger.x, floorIdx * 8, stagger.z]}>
+        <group key={`floor-plane-${floorIdx}`} position={[0, floorIdx * 8, 0]}>
           {interactive ? <gridHelper args={[bounds.width, bounds.depth, "#334155", "#1e293b"]} position={[bounds.centerX, 0.01, bounds.centerZ]} /> : null}
           <mesh
             rotation={[-Math.PI / 2, 0, 0]}
@@ -123,13 +121,13 @@ export function FloorModel({
           >
             <planeGeometry args={[bounds.width, bounds.depth]} />
             <meshStandardMaterial 
-              color={interactive ? "#0b1220" : forceColor ?? "#8B5FBF"} 
+              color={interactive ? "#0b1220" : floorColor ?? forceColor ?? "#8B5FBF"} 
               roughness={0.9} 
               transparent={interactive} 
               opacity={interactive ? 0.4 : 1.0} 
             />
           </mesh>
-          {floorIdx === 0 && imageUrl && !imageUrl.endsWith(".svg") ? <BlueprintOverlay url={imageUrl} /> : null}
+          {floorIdx === 0 && imageUrl && !interactive && !imageUrl.endsWith(".svg") ? <BlueprintOverlay url={imageUrl} /> : null}
         </group>
         );
       })}
@@ -138,8 +136,8 @@ export function FloorModel({
          <BlockMesh
            key={block.id}
            block={block}
-           isExplodedView={isExplodedView}
            forceColor={forceColor}
+           blockColor={blockColor}
            onBlockPointerDown={onBlockPointerDown}
            onBlockClick={onBlockClick}
          />
@@ -152,21 +150,20 @@ import { useMemo } from "react";
 
 function BlockMesh({
   block,
-  isExplodedView,
   forceColor,
+  blockColor,
   onBlockPointerDown,
   onBlockClick,
 }: {
   block: FloorBlockMesh;
-  isExplodedView: boolean;
   forceColor?: string;
+  blockColor?: string;
   onBlockPointerDown?: (id: string, point: THREE.Vector3, shiftKey: boolean) => void;
   onBlockClick?: (id: string, append: boolean) => void;
 }) {
-  const stagger = getExplodedStagger(block.levelNumber ?? 1, isExplodedView);
-
+  const shape = (block.shape ?? "BOX").trim().toUpperCase();
   const customGeometry = useMemo(() => {
-    if (block.shape === "POLYGON" && block.pointsData) {
+    if (shape === "POLYGON" && block.pointsData) {
       try {
         const points: [number, number][] = JSON.parse(block.pointsData);
         if (points.length >= 3) {
@@ -192,37 +189,53 @@ function BlockMesh({
       }
     }
     return null;
-  }, [block.shape, block.pointsData]);
+  }, [shape, block.pointsData]);
 
   return (
-    <mesh
-      position={[block.posX + stagger.x, block.posY + block.scaleY / 2, block.posZ + stagger.z]}
+    <group
+      position={[block.posX, block.posY + block.scaleY / 2, block.posZ]}
       rotation={[0, block.rotationY ?? 0, 0]}
       scale={[block.scaleX, block.scaleY, block.scaleZ]}
-      castShadow
       onPointerDown={(e) => {
         e.stopPropagation();
         onBlockPointerDown?.(block.id, e.point, e.shiftKey);
         onBlockClick?.(block.id, e.shiftKey);
       }}
     >
-      {customGeometry && <primitive object={customGeometry} attach="geometry" />}
-      {!customGeometry && block.shape === "CYLINDER" && <cylinderGeometry args={[0.5, 0.5, 1, 32]} />}
-      {!customGeometry && block.shape === "WEDGE" && <cylinderGeometry args={[0.5, 0.5, 1, 32, 1, false, 0, Math.PI / 2]} />}
-      {!customGeometry && block.shape !== "CYLINDER" && block.shape !== "WEDGE" && <boxGeometry args={[1, 1, 1]} />}
-      
-      <meshStandardMaterial
-        color={forceColor ?? block.color ?? "#e2e8f0"}
-        emissive={block.selected ? "#38bdf8" : (forceColor ?? block.color ?? "#e2e8f0")}
-        emissiveIntensity={block.selected ? 1.0 : 0.15}
-        roughness={0.7}
-        metalness={0.1}
-      />
-      <Edges 
-        linewidth={2} 
-        threshold={15} 
-        color={block.selected ? "#ffffff" : "#475569"} 
-      />
+      {shape === "ESCALATOR" ? (
+        <EscalatorGeometry selected={block.selected ?? false} />
+      ) : shape === "STAIRS" ? (
+        <StairsGeometry selected={block.selected ?? false} />
+      ) : shape === "PLANT" ? (
+        <PlantGeometry selected={block.selected ?? false} />
+      ) : shape === "CHAIR" ? (
+        <ChairGeometry selected={block.selected ?? false} />
+      ) : shape === "TABLE" ? (
+        <TableGeometry selected={block.selected ?? false} />
+      ) : shape === "BENCH" ? (
+        <BenchGeometry selected={block.selected ?? false} />
+      ) : shape === "STREET_LIGHT" ? (
+        <StreetLightGeometry selected={block.selected ?? false} />
+      ) : shape === "COMPUTER" ? (
+        <ComputerGeometry selected={block.selected ?? false} />
+      ) : shape === "TRIANGLE" ? (
+        <TriangleGeometry selected={block.selected ?? false} />
+      ) : (
+        <mesh castShadow>
+          {customGeometry && <primitive object={customGeometry} attach="geometry" />}
+          {!customGeometry && shape === "CYLINDER" && <cylinderGeometry args={[0.5, 0.5, 1, 32]} />}
+          {!customGeometry && shape === "WEDGE" && <cylinderGeometry args={[0.5, 0.5, 1, 32, 1, false, 0, Math.PI / 2]} />}
+          {!customGeometry && shape !== "CYLINDER" && shape !== "WEDGE" && <boxGeometry args={[1, 1, 1]} />}
+          <meshStandardMaterial
+            color={blockColor ?? forceColor ?? block.color ?? "#e2e8f0"}
+            emissive={block.selected ? "#38bdf8" : (blockColor ?? forceColor ?? block.color ?? "#e2e8f0")}
+            emissiveIntensity={block.selected ? 1.0 : 0.15}
+            roughness={0.7}
+            metalness={0.1}
+          />
+          <Edges linewidth={2} threshold={15} color={block.selected ? "#ffffff" : "#475569"} />
+        </mesh>
+      )}
       {block.label ? (
         <Html center distanceFactor={18} position={[0, 0.7, 0]}>
           <div className="whitespace-nowrap rounded-md bg-black/90 border border-white/20 px-3 py-1.5 text-xs font-bold text-white shadow-xl pointer-events-none">
@@ -230,14 +243,157 @@ function BlockMesh({
           </div>
         </Html>
       ) : null}
-    </mesh>
+    </group>
   );
+}
+
+function EscalatorGeometry({ selected }: { selected: boolean }) {
+  const bodyColor = selected ? "#38bdf8" : "#475569";
+  const stepColor = selected ? "#bae6fd" : "#94a3b8";
+  const railColor = selected ? "#ffffff" : "#f59e0b";
+  const slope = Math.atan2(0.82, 2.9);
+
+  return (
+    <group position={[0, -0.05, 0]}>
+      <mesh position={[0, -0.42, 0]} castShadow>
+        <boxGeometry args={[0.95, 0.3, 3.2]} />
+        <meshStandardMaterial color={bodyColor} roughness={0.65} metalness={0.25} />
+        <Edges color={selected ? "#ffffff" : "#1e293b"} linewidth={2} />
+      </mesh>
+      {Array.from({ length: 18 }).map((_, index) => {
+        const progress = index / 17;
+        const z = -1.35 + progress * 2.7;
+        const y = -0.22 + progress * 0.78;
+        return (
+          <mesh key={index} position={[0, y, z]} castShadow>
+            <boxGeometry args={[0.76, 0.055, 0.14]} />
+            <meshStandardMaterial color={stepColor} roughness={0.8} />
+          </mesh>
+        );
+      })}
+      <mesh position={[0, -0.22, -1.48]} castShadow>
+        <boxGeometry args={[0.96, 0.12, 0.28]} />
+        <meshStandardMaterial color={stepColor} />
+      </mesh>
+      <mesh position={[0, 0.62, 1.48]} castShadow>
+        <boxGeometry args={[0.96, 0.12, 0.28]} />
+        <meshStandardMaterial color={stepColor} />
+      </mesh>
+      {[-0.42, 0.42].map((x) => (
+        <group key={x}>
+          <mesh position={[x, 0.18, 0]} rotation={[-slope, 0, 0]} castShadow>
+            <boxGeometry args={[0.08, 0.12, 3.25]} />
+            <meshStandardMaterial color={bodyColor} metalness={0.35} roughness={0.5} />
+          </mesh>
+          <mesh position={[x, 0.62, 0.02]} rotation={[-slope, 0, 0]} castShadow>
+            <boxGeometry args={[0.08, 0.08, 3.35]} />
+            <meshStandardMaterial color={railColor} metalness={0.65} roughness={0.3} />
+          </mesh>
+        </group>
+      ))}
+    </group>
+  );
+}
+
+function StairsGeometry({ selected }: { selected: boolean }) {
+  const color = selected ? "#bae6fd" : "#64748b";
+  return <group>{Array.from({ length: 8 }).map((_, index) => (
+    <mesh key={index} position={[0, -0.38 + index * 0.12, -0.85 + index * 0.22]} castShadow>
+      <boxGeometry args={[0.95, 0.24 + index * 0.03, 0.28 + index * 0.22]} />
+      <meshStandardMaterial color={color} />
+      <Edges color={selected ? "#ffffff" : "#334155"} linewidth={1.5} />
+    </mesh>
+  ))}</group>;
+}
+
+function PlantGeometry({ selected }: { selected: boolean }) {
+  return (
+    <group>
+      <mesh position={[0, -0.38, 0]} castShadow>
+        <cylinderGeometry args={[0.28, 0.38, 0.3, 20]} />
+        <meshStandardMaterial color={selected ? "#bae6fd" : "#c08457"} />
+      </mesh>
+      {[-0.16, 0, 0.16].map((x, index) => (
+        <mesh key={index} position={[x, 0.02 + (index % 2) * 0.08, 0]} rotation={[0, (index - 1) * 0.35, (index - 1) * 0.2]} castShadow>
+          <sphereGeometry args={[0.18, 12, 8]} />
+          <meshStandardMaterial color={selected ? "#86efac" : index === 1 ? "#22c55e" : "#16a34a"} roughness={0.8} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+function ChairGeometry({ selected }: { selected: boolean }) {
+  const color = selected ? "#bae6fd" : "#d97706";
+  return (
+    <group>
+      <mesh position={[0, -0.12, 0]} castShadow><boxGeometry args={[0.7, 0.12, 0.7]} /><meshStandardMaterial color={color} /></mesh>
+      <mesh position={[0, 0.35, 0.28]} castShadow><boxGeometry args={[0.7, 0.8, 0.12]} /><meshStandardMaterial color={color} /></mesh>
+      {[-0.25, 0.25].flatMap((x) => [-0.25, 0.25].map((z) => (
+        <mesh key={`${x}-${z}`} position={[x, -0.42, z]} castShadow><cylinderGeometry args={[0.045, 0.045, 0.6, 8]} /><meshStandardMaterial color={color} /></mesh>
+      )))}
+    </group>
+  );
+}
+
+function TableGeometry({ selected }: { selected: boolean }) {
+  const color = selected ? "#bae6fd" : "#92400e";
+  return (
+    <group>
+      <mesh position={[0, 0.15, 0]} castShadow><cylinderGeometry args={[0.72, 0.72, 0.14, 24]} /><meshStandardMaterial color={color} roughness={0.65} /></mesh>
+      <mesh position={[0, -0.3, 0]} castShadow><cylinderGeometry args={[0.1, 0.16, 0.8, 12]} /><meshStandardMaterial color={color} /></mesh>
+      <mesh position={[0, -0.7, 0]} castShadow><cylinderGeometry args={[0.48, 0.48, 0.08, 20]} /><meshStandardMaterial color={color} /></mesh>
+    </group>
+  );
+}
+
+function BenchGeometry({ selected }: { selected: boolean }) {
+  const color = selected ? "#bae6fd" : "#92400e";
+  return <group>
+    <mesh position={[0, 0.12, 0]} castShadow><boxGeometry args={[1.5, 0.14, 0.45]} /><meshStandardMaterial color={color} /></mesh>
+    <mesh position={[0, 0.58, 0.18]} castShadow><boxGeometry args={[1.5, 0.75, 0.12]} /><meshStandardMaterial color={color} /></mesh>
+    {[-0.55, 0.55].map((x) => <mesh key={x} position={[x, -0.32, 0]} castShadow><boxGeometry args={[0.1, 0.75, 0.35]} /><meshStandardMaterial color={color} /></mesh>)}
+  </group>;
+}
+
+function StreetLightGeometry({ selected }: { selected: boolean }) {
+  const metal = selected ? "#bae6fd" : "#334155";
+  return <group>
+    <mesh position={[0, -0.58, 0]} castShadow><cylinderGeometry args={[0.18, 0.24, 0.1, 16]} /><meshStandardMaterial color={metal} metalness={0.7} /></mesh>
+    <mesh position={[0, 0.05, 0]} castShadow><cylinderGeometry args={[0.045, 0.07, 1.3, 12]} /><meshStandardMaterial color={metal} metalness={0.7} /></mesh>
+    <mesh position={[0, 0.68, 0.14]} rotation={[0.35, 0, 0]} castShadow><boxGeometry args={[0.08, 0.08, 0.42]} /><meshStandardMaterial color={metal} metalness={0.7} /></mesh>
+    <mesh position={[0, 0.62, 0.34]} castShadow><sphereGeometry args={[0.13, 16, 12]} /><meshStandardMaterial color={selected ? "#ffffff" : "#fde68a"} emissive="#facc15" emissiveIntensity={0.7} /></mesh>
+  </group>;
+}
+
+function ComputerGeometry({ selected }: { selected: boolean }) {
+  const shell = selected ? "#bae6fd" : "#64748b";
+  return <group>
+    <mesh position={[0, 0.35, 0.1]} castShadow><boxGeometry args={[0.75, 0.52, 0.08]} /><meshStandardMaterial color={shell} /></mesh>
+    <mesh position={[0, 0.02, 0.1]} castShadow><boxGeometry args={[0.08, 0.65, 0.08]} /><meshStandardMaterial color={shell} /></mesh>
+    <mesh position={[0, -0.32, 0.1]} castShadow><boxGeometry args={[0.7, 0.08, 0.42]} /><meshStandardMaterial color={shell} /></mesh>
+    <mesh position={[0, -0.17, -0.05]} castShadow><boxGeometry args={[0.55, 0.04, 0.3]} /><meshStandardMaterial color="#111827" /></mesh>
+  </group>;
+}
+
+function TriangleGeometry({ selected }: { selected: boolean }) {
+  const geometry = useMemo(() => {
+    const shape = new THREE.Shape();
+    shape.moveTo(-0.5, -0.5);
+    shape.lineTo(0.5, -0.5);
+    shape.lineTo(0, 0.5);
+    shape.closePath();
+    const result = new THREE.ExtrudeGeometry(shape, { depth: 1, bevelEnabled: false });
+    result.rotateX(Math.PI / 2);
+    return result;
+  }, []);
+  return <mesh geometry={geometry} castShadow><meshStandardMaterial color={selected ? "#bae6fd" : "#0ea5e9"} /><Edges color={selected ? "#ffffff" : "#075985"} linewidth={2} /></mesh>;
 }
 
 function BlueprintOverlay({ url }: { url: string }) {
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
-      <planeGeometry args={[40, 40]} />
+      <planeGeometry args={[45, 45]} />
       <meshBasicMaterial color="#1e293b" transparent opacity={0.85} />
       <Html transform occlude={false} position={[0, 0, 0.01]} distanceFactor={14}>
         {/* eslint-disable-next-line @next/next/no-img-element */}

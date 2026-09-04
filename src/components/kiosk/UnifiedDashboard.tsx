@@ -8,7 +8,7 @@ import type { FloorBlockMesh } from "@/components/3d/FloorModel";
 import type { GraphNode, PathResult } from "@/lib/pathfinding";
 import type { CategoryOption } from "@/components/kiosk/CategorySelector";
 import { HomeSearch } from "./HomeSearch";
-import { ArrowLeft, Play, Square, Layers } from "lucide-react";
+import { ArrowLeft, Play, Square } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const PathfindingCanvas = dynamic(
@@ -31,8 +31,6 @@ export function UnifiedDashboard({
 }) {
   const selectedTenantId = useKioskStore((s) => s.selectedTenantId);
   const setSelectedTenant = useKioskStore((s) => s.setSelectedTenant);
-  const isExplodedView = useKioskStore((s) => s.isExplodedView);
-  const setExplodedView = useKioskStore((s) => s.setExplodedView);
   const [route, setRoute] = useState<PathResult | null>(null);
 
   // Animation State
@@ -41,13 +39,6 @@ export function UnifiedDashboard({
   const tenant = useMemo(() => tenants.find((t) => t.id === selectedTenantId), [tenants, selectedTenantId]);
   const goal = tenant?.entranceNodeId ?? null;
   
-  const targetLevel = useMemo(() => {
-    const destLevel = tenant?.floor?.levelNumber ?? 1;
-    const startNode = nodes.find((n) => n.id === startNodeId);
-    const startLevel = startNode ? Math.round(startNode.position.y / 8) + 1 : 1;
-    return Math.max(startLevel, destLevel);
-  }, [tenant, nodes, startNodeId]);
-
   useEffect(() => {
     if (!startNodeId || !goal) {
        setRoute(null);
@@ -68,9 +59,9 @@ export function UnifiedDashboard({
   return (
     <div className="relative h-full w-full overflow-hidden bg-background">
       
-      {/* FULL SCREEN MAP (Only visible when a store is tapped or exploded view is active) */}
+      {/* FULL SCREEN MAP (Only visible when a store is tapped) */}
       <AnimatePresence>
-        {(selectedTenantId || isExplodedView) && (
+        {selectedTenantId && (
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -83,9 +74,7 @@ export function UnifiedDashboard({
                 blocks={blocks} 
                 nodes={nodes} 
                 route={route} 
-                targetLevel={targetLevel} 
                 isPlayingAnimation={isPlayingAnimation} 
-                isExplodedView={isExplodedView}
                 onAnimationComplete={() => {
                   setIsPlayingAnimation(false);
                   // Loop repeatedly with a 1.5s delay
@@ -101,7 +90,6 @@ export function UnifiedDashboard({
                     <button 
                       onClick={() => {
                         setSelectedTenant(null);
-                        setExplodedView(false);
                         setIsPlayingAnimation(false);
                       }} 
                       className="pointer-events-auto flex h-14 w-14 items-center justify-center rounded-full bg-black/20 border border-white/10 text-white shadow-2xl backdrop-blur-xl hover:bg-black/40 hover:scale-105 active:scale-95 transition-all"
@@ -124,11 +112,6 @@ export function UnifiedDashboard({
                         >
                           F{tenant.floor?.levelNumber ?? "?"}
                         </span>
-                      </div>
-                    ) : isExplodedView ? (
-                      <div className="pointer-events-auto flex items-center gap-3 rounded-full bg-black/20 border border-white/10 px-6 py-3 backdrop-blur-xl shadow-2xl">
-                        <Layers className="h-6 w-6 text-sky-400" />
-                        <h2 className="text-lg font-bold text-white tracking-wide">All Floors View</h2>
                       </div>
                     ) : null}
                   </div>
@@ -157,19 +140,6 @@ export function UnifiedDashboard({
                         )}
                       </button>
                       
-                      <button
-                        onClick={() => setExplodedView(!isExplodedView)}
-                        className={`pointer-events-auto flex w-fit items-center gap-3 rounded-full border px-5 py-3 backdrop-blur-xl shadow-2xl transition-all ${
-                          isExplodedView 
-                            ? "bg-sky-500/20 border-sky-500/50 text-sky-100 hover:bg-sky-500/30" 
-                            : "bg-black/40 border-white/10 text-white hover:bg-white/10 hover:scale-105"
-                        }`}
-                      >
-                        <Layers className="h-5 w-5 fill-current" />
-                        <span className="font-bold tracking-wide">
-                          {isExplodedView ? "Floor by Floor Mode" : "All Floors View"}
-                        </span>
-                      </button>
                     </div>
                   )}
                 </div>

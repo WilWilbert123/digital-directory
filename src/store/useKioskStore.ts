@@ -35,8 +35,6 @@ type KioskState = {
   tickIdle: () => void;
   resetIdle: () => void;
   setKeyboardOpen: (open: boolean) => void;
-  isExplodedView: boolean;
-  setExplodedView: (val: boolean) => void;
 };
 
 export const useKioskStore = create<KioskState>((set) => ({
@@ -62,6 +60,4 @@ export const useKioskStore = create<KioskState>((set) => ({
   tickIdle: () => set((s) => ({ idleSeconds: s.idleSeconds + 1 })),
   resetIdle: () => set({ idleSeconds: 0 }),
   setKeyboardOpen: (keyboardOpen) => set({ keyboardOpen, idleSeconds: 0 }),
-  isExplodedView: false,
-  setExplodedView: (isExplodedView) => set({ isExplodedView, idleSeconds: 0 }),
 }));

@@ -25,7 +25,7 @@ export default async function KioskHomePage() {
     scaleX: b.scaleX,
     scaleY: b.scaleY,
     scaleZ: b.scaleZ,
-    shape: b.shape,
+    shape: b.shape.trim().toUpperCase(),
     pointsData: b.pointsData,
     color: b.tenant?.category.colorHex,
     label: b.tenant?.tenantName ?? b.blockName,
