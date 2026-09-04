@@ -265,7 +265,7 @@ export async function saveFloorGraphAction(input: {
     scaleZ: number;
     rotationY: number;
     tenantId: string | null;
-    shape: "BOX" | "CYLINDER" | "WEDGE" | "POLYGON";
+    shape: "BOX" | "CYLINDER" | "WEDGE" | "ESCALATOR" | "STAIRS" | "PLANT" | "CHAIR" | "TABLE" | "BENCH" | "STREET_LIGHT" | "COMPUTER" | "TRIANGLE" | "POLYGON";
     pointsData?: string | null;
   }>;
   nodes: Array<{
@@ -353,15 +353,16 @@ export async function saveFloorGraphAction(input: {
     }
 
     // 4. Restore tenant node assignments (if the node wasn't deleted by the user)
+    const savedNodeIds = new Set(nodes.map((n) => n.id));
     for (const t of tenantsWithNodes) {
-      if (nodes.some((n) => n.id === t.entranceNodeId)) {
+      if (t.entranceNodeId && savedNodeIds.has(t.entranceNodeId)) {
         await tx.tenant.update({
           where: { id: t.id },
           data: { entranceNodeId: t.entranceNodeId },
         });
       }
     }
-  }, { maxWait: 15000, timeout: 20000 });
+  }, { maxWait: 30000, timeout: 60000 });
 
   await audit("FloorGraph", "UPDATE", { floorId, blocks: blocks.length, nodes: nodes.length, edges: edges.length });
   revalidatePath(`/admin/floors/${floorId}/editor`);

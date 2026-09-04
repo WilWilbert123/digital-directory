@@ -8,7 +8,7 @@ import { Canvas, useThree } from "@react-three/fiber";
 import { PerspectiveCamera, MapControls, Html, Edges, Line, Sphere } from "@react-three/drei";
 import { FloorModel } from "@/components/3d/FloorModel";
 import { HumanAvatar } from "@/components/3d/HumanAvatar";
-import { useAdminStore, type DraftNode } from "@/store/useAdminStore";
+import { useAdminStore, type DraftBlock, type DraftNode } from "@/store/useAdminStore";
 
 function DragListener({ isDragging, onFloorPointerMove }: { isDragging: boolean; onFloorPointerMove: (point: THREE.Vector3) => void; }) {
   const { gl, camera } = useThree();
@@ -128,9 +128,11 @@ function SelectionProjector({
 export function UnifiedFloorEditor({
   imageUrl,
   tenantColors,
+  placementShape = "BOX",
 }: {
   imageUrl?: string | null;
   tenantColors: Record<string, string>;
+  placementShape?: DraftBlock["shape"];
 }) {
   const tool = useAdminStore((s) => s.tool);
   const blocks = useAdminStore((s) => s.blocks);
@@ -300,17 +302,33 @@ export function UnifiedFloorEditor({
     if (isDraggingRef.current) return; // ignore clicks that were actually drags
     if (tool === "block") {
       const id = crypto.randomUUID();
+      const objectDefaults: { scaleX: number; scaleY: number; scaleZ: number } = {
+        BOX: { scaleX: 2, scaleY: 2, scaleZ: 2 },
+        CYLINDER: { scaleX: 2, scaleY: 2, scaleZ: 2 },
+        WEDGE: { scaleX: 2, scaleY: 2, scaleZ: 2 },
+        ESCALATOR: { scaleX: 2.5, scaleY: 2.5, scaleZ: 3.5 },
+        STAIRS: { scaleX: 2.5, scaleY: 2, scaleZ: 2.5 },
+        PLANT: { scaleX: 1.5, scaleY: 1.5, scaleZ: 1.5 },
+        CHAIR: { scaleX: 1.5, scaleY: 1.5, scaleZ: 1.5 },
+        TABLE: { scaleX: 1.5, scaleY: 1.5, scaleZ: 1.5 },
+        BENCH: { scaleX: 2, scaleY: 1.5, scaleZ: 1.5 },
+        STREET_LIGHT: { scaleX: 1.5, scaleY: 2.5, scaleZ: 1.5 },
+        COMPUTER: { scaleX: 1.5, scaleY: 1.5, scaleZ: 1.5 },
+        TRIANGLE: { scaleX: 2, scaleY: 2, scaleZ: 2 },
+        POLYGON: { scaleX: 2, scaleY: 2, scaleZ: 2 },
+      }[placementShape];
       upsertBlock({
         id,
         blockName: `BLK-${blocks.length + 1}`,
         posX: Number(point.x.toFixed(2)),
         posY: 0,
         posZ: Number(point.z.toFixed(2)),
-        scaleX: 2,
-        scaleY: 2,
-        scaleZ: 2,
+        ...objectDefaults,
         rotationY: 0,
-        shape: "BOX",
+        shape: placementShape,
+        pointsData: placementShape === "POLYGON"
+          ? JSON.stringify([[0, -0.5], [0.45, -0.25], [0.45, 0.25], [0, 0.5], [-0.45, 0.25], [-0.45, -0.25]])
+          : null,
         tenantId: null,
       });
       selectBlock(id);
@@ -375,7 +393,7 @@ export function UnifiedFloorEditor({
           <FloorModel
             imageUrl={imageUrl}
             blocks={meshes}
-            interactive={tool === "block" || tool === "node" || tool === "select"}
+            interactive={tool === "block" || tool === "node" || tool === "edge" || tool === "select"}
             onBlockClick={(id, append) => { if (tool === "select" && !isDragging) selectBlock(id, append); }}
             onBlockPointerDown={tool === "select" ? onBlockPointerDown : undefined}
             onPlaneClick={onPlaneClick}
@@ -483,8 +501,8 @@ export function UnifiedFloorEditor({
 
       {/* Move/Scale mode buttons (shown when blocks or nodes selected) */}
       {(selectedBlockIds.length > 0 || selectedNodeIds.length > 0) && tool === "select" && (
-        <div className="absolute top-4 left-4 z-20 flex gap-2 rounded-lg bg-black/50 p-2 backdrop-blur pointer-events-auto">
-          <span className="px-3 py-1 text-sm rounded bg-sky-600/30 border border-sky-600/50 text-sky-300 font-semibold">
+        <div className="absolute top-16 left-4 z-20 flex gap-2 rounded-lg bg-black/0 p-2   pointer-events-auto">
+          <span className="px-3 py-1 text-sm rounded bg-sky-1600/10   border-sky-600/50 text-sky-300 font-semibold">
             {isDragging ? "🟠 Dragging…" : "🔵 Drag block to move"}
           </span>
         </div>

@@ -6,6 +6,21 @@ import { UnifiedFloorEditor } from "@/components/admin/UnifiedFloorEditor";
 import { useAdminStore, type DraftBlock, type DraftEdge, type DraftNode } from "@/store/useAdminStore";
 
 const TYPES: DraftNode["type"][] = ["WALKWAY", "TENANT_ENTRANCE", "ELEVATOR", "ESCALATOR", "STAIRS", "KIOSK_START"];
+const SHAPES: { value: DraftBlock["shape"]; label: string; icon: string }[] = [
+  { value: "BOX", label: "Block", icon: "▣" },
+  { value: "CYLINDER", label: "Circle", icon: "◉" },
+  { value: "WEDGE", label: "Curved", icon: "◒" },
+  { value: "ESCALATOR", label: "Escalator", icon: "↗" },
+  { value: "STAIRS", label: "Stairs", icon: "▤" },
+  { value: "PLANT", label: "Plant", icon: "♧" },
+  { value: "CHAIR", label: "Chair", icon: "♜" },
+  { value: "TABLE", label: "Table", icon: "⊞" },
+  { value: "BENCH", label: "Bench", icon: "▰" },
+  { value: "STREET_LIGHT", label: "Street light", icon: "†" },
+  { value: "COMPUTER", label: "Computer PC", icon: "▣" },
+  { value: "TRIANGLE", label: "Triangle", icon: "△" },
+  { value: "POLYGON", label: "Polygon", icon: "⬡" },
+];
 
 export function FloorEditorClient({
   floorId,
@@ -41,6 +56,8 @@ export function FloorEditorClient({
   const [generating, setGenerating] = useState(false);
   const [showMap, setShowMap] = useState(true);
   const [isPanelOpen, setIsPanelOpen] = useState(true);
+  const [shapeMenuOpen, setShapeMenuOpen] = useState(false);
+  const [placementShape, setPlacementShape] = useState<DraftBlock["shape"]>("BOX");
 
   useEffect(() => {
     hydrate(initial);
@@ -89,6 +106,36 @@ export function FloorEditorClient({
             {t}
           </button>
         ))}
+        <div className="relative border-l border-slate-300 dark:border-slate-700 pl-4">
+          <button
+            type="button"
+            onClick={() => setShapeMenuOpen((open) => !open)}
+            className={`rounded-full px-4 py-2 text-sm font-semibold transition-all border shadow-sm ${shapeMenuOpen || tool === "block" ? "bg-amber-500 text-white border-amber-600" : "bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 border-slate-200 dark:border-slate-700"}`}
+            aria-expanded={shapeMenuOpen}
+          >
+            Shape: {SHAPES.find((shape) => shape.value === placementShape)?.label}
+          </button>
+          {shapeMenuOpen && (
+            <div className="absolute left-4 top-full z-50 mt-2 max-h-72 w-52 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+              <div className="px-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Choose object to place</div>
+              {SHAPES.map((shape) => (
+                <button
+                  key={shape.value}
+                  type="button"
+                  onClick={() => {
+                    setPlacementShape(shape.value);
+                    setTool("block");
+                    setShapeMenuOpen(false);
+                  }}
+                  className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-semibold transition-colors ${placementShape === shape.value ? "bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-200" : "text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"}`}
+                >
+                  <span className="flex h-7 w-7 items-center justify-center rounded-md bg-slate-100 text-lg dark:bg-slate-800">{shape.icon}</span>
+                  {shape.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <button
           type="button"
           onClick={() => {
@@ -133,28 +180,22 @@ export function FloorEditorClient({
             </button>
           </div>
         )}
-        <div className="flex gap-2 border-l border-slate-300 dark:border-slate-700 pl-4">
-          <button
-            type="button"
-            onClick={() => useAdminStore.getState().addMultipleBlocks(1, -18, -18)}
+        <div className="border-l border-slate-300 dark:border-slate-700 pl-4">
+          <select
+            aria-label="Add blocks"
+            defaultValue=""
+            onChange={(e) => {
+              const count = Number(e.target.value);
+              if (count) useAdminStore.getState().addMultipleBlocks(count, -18, -18);
+              e.target.value = "";
+            }}
             className="rounded-lg bg-indigo-100 text-indigo-800 hover:bg-indigo-200 dark:bg-indigo-950/60 dark:text-indigo-300 dark:hover:bg-indigo-900/80 px-3 py-2 text-sm font-semibold transition-colors border border-indigo-300 dark:border-indigo-800/50"
           >
-            +1 Block
-          </button>
-          <button
-            type="button"
-            onClick={() => useAdminStore.getState().addMultipleBlocks(5, -18, -18)}
-            className="rounded-lg bg-indigo-100 text-indigo-800 hover:bg-indigo-200 dark:bg-indigo-950/60 dark:text-indigo-300 dark:hover:bg-indigo-900/80 px-3 py-2 text-sm font-semibold transition-colors border border-indigo-300 dark:border-indigo-800/50"
-          >
-            +5 Blocks
-          </button>
-          <button
-            type="button"
-            onClick={() => useAdminStore.getState().addMultipleBlocks(10, -18, -18)}
-            className="rounded-lg bg-indigo-100 text-indigo-800 hover:bg-indigo-200 dark:bg-indigo-950/60 dark:text-indigo-300 dark:hover:bg-indigo-900/80 px-3 py-2 text-sm font-semibold transition-colors border border-indigo-300 dark:border-indigo-800/50"
-          >
-            +10 Blocks
-          </button>
+            <option value="" disabled>Add blocks</option>
+            <option value="1">+1 Block</option>
+            <option value="5">+5 Blocks</option>
+            <option value="10">+10 Blocks</option>
+          </select>
         </div>
         <div className="flex gap-2 border-l border-slate-300 dark:border-slate-700 pl-4">
           <button
@@ -272,7 +313,7 @@ export function FloorEditorClient({
           <div className="absolute top-4 left-4 z-10 pointer-events-none">
             <h1 className="text-xl md:text-2xl font-black text-slate-800 dark:text-white drop-shadow-md tracking-tight">{floorName} editor</h1>
           </div>
-          <UnifiedFloorEditor imageUrl={showMap ? imageUrl : null} tenantColors={tenantColors} />
+          <UnifiedFloorEditor imageUrl={showMap ? imageUrl : null} tenantColors={tenantColors} placementShape={placementShape} />
         </div>
         {/* Floating Right Property Panel */}
         {(selectedBlock || selectedNode || multiSelected) && (
@@ -330,11 +371,20 @@ export function FloorEditorClient({
                           <select
                             className="w-full h-7 text-xs rounded bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 px-1 border border-slate-300 dark:border-slate-700 focus:outline-none"
                             value={selectedBlock.shape ?? "BOX"}
-                            onChange={(e) => upsertBlock({ ...selectedBlock, shape: e.target.value as "BOX" | "CYLINDER" | "WEDGE" })}
+                            onChange={(e) => upsertBlock({ ...selectedBlock, shape: e.target.value as DraftBlock["shape"] })}
                           >
                             <option value="BOX">Square</option>
                             <option value="CYLINDER">Circle</option>
                             <option value="WEDGE">Curved</option>
+                            <option value="ESCALATOR">Escalator</option>
+                            <option value="STAIRS">Stairs</option>
+                            <option value="PLANT">Plant</option>
+                            <option value="CHAIR">Chair</option>
+                            <option value="TABLE">Table</option>
+                            <option value="BENCH">Bench</option>
+                            <option value="STREET_LIGHT">Street light</option>
+                            <option value="COMPUTER">Computer PC</option>
+                            <option value="TRIANGLE">Triangle</option>
                           </select>
                         </div>
                         <div className="flex-1">
