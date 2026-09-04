@@ -18,6 +18,7 @@ export type DraftBlock = {
   shape: "BOX" | "CYLINDER" | "WEDGE" | "ESCALATOR" | "STAIRS" | "PLANT" | "CHAIR" | "TABLE" | "BENCH" | "STREET_LIGHT" | "COMPUTER" | "TRIANGLE" | "POLYGON";
   pointsData?: string | null;
   color?: string | null;
+  logoURL?: string | null;
   tenantId: string | null;
 };
 

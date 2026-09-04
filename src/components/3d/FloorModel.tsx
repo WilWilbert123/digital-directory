@@ -19,6 +19,7 @@ export type FloorBlockMesh = {
   color?: string;
   selected?: boolean;
   label?: string;
+  logoURL?: string | null;
   levelNumber?: number;
 };
 
@@ -36,6 +37,7 @@ export function FloorModel({
   floorColor,
   blockColor,
   fixedFloorSize,
+  hideBlockOverlays = false,
 }: {
   imageUrl?: string | null;
   blocks: FloorBlockMesh[];
@@ -50,6 +52,7 @@ export function FloorModel({
   floorColor?: string;
   blockColor?: string;
   fixedFloorSize?: number;
+  hideBlockOverlays?: boolean;
 }) {
   const visibleBlocks = strictLevel != null 
     ? blocks.filter(b => (b.levelNumber ?? 1) === strictLevel)
@@ -138,6 +141,7 @@ export function FloorModel({
            block={block}
            forceColor={forceColor}
            blockColor={blockColor}
+           hideBlockOverlays={hideBlockOverlays}
            onBlockPointerDown={onBlockPointerDown}
            onBlockClick={onBlockClick}
          />
@@ -146,18 +150,20 @@ export function FloorModel({
   );
 }
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 function BlockMesh({
   block,
   forceColor,
   blockColor,
+  hideBlockOverlays,
   onBlockPointerDown,
   onBlockClick,
 }: {
   block: FloorBlockMesh;
   forceColor?: string;
   blockColor?: string;
+  hideBlockOverlays: boolean;
   onBlockPointerDown?: (id: string, point: THREE.Vector3, shiftKey: boolean) => void;
   onBlockClick?: (id: string, append: boolean) => void;
 }) {
@@ -236,13 +242,50 @@ function BlockMesh({
           <Edges linewidth={2} threshold={15} color={block.selected ? "#ffffff" : "#475569"} />
         </mesh>
       )}
-      {block.label ? (
+      {!hideBlockOverlays && block.logoURL ? (
+        <LogoSticker
+          url={block.logoURL}
+          blockScale={[block.scaleX, block.scaleY, block.scaleZ]}
+          isCircular={shape === "CYLINDER"}
+        />
+      ) : null}
+      {!hideBlockOverlays && block.label ? (
         <Html center distanceFactor={18} position={[0, 0.7, 0]}>
           <div className="whitespace-nowrap rounded-md bg-black/90 border border-white/20 px-3 py-1.5 text-xs font-bold text-white shadow-xl pointer-events-none">
             {block.label}
           </div>
         </Html>
       ) : null}
+    </group>
+  );
+}
+
+function LogoSticker({
+  url,
+  blockScale,
+  isCircular,
+}: {
+  url: string;
+  blockScale: [number, number, number];
+  isCircular: boolean;
+}) {
+  const [failed, setFailed] = useState(false);
+  const inverseScale = blockScale.map((value) => 1 / Math.max(value, 0.01)) as [number, number, number];
+
+  if (failed) return null;
+
+  return (
+    <group position={[0, 0, 0.5]} scale={inverseScale}>
+      <mesh position={[0, 0, -0.004]}>
+        <planeGeometry args={isCircular ? [0.42, 0.42] : [0.48, 0.28]} />
+        <meshStandardMaterial color="#ffffff" roughness={0.7} metalness={0.05} />
+      </mesh>
+      <Html center transform distanceFactor={30} position={[0, 0, 0.004]} style={{ pointerEvents: "none" }}>
+        <div className={`flex items-center justify-center overflow-hidden bg-white p-0.5 ${isCircular ? "h-7 w-7 rounded-full" : "h-6 w-10 rounded-sm"}`}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={url} alt="" onError={() => setFailed(true)} className="max-h-full max-w-full object-contain" />
+        </div>
+      </Html>
     </group>
   );
 }

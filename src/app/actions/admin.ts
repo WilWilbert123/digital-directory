@@ -193,6 +193,7 @@ export async function saveTenantAction(formData: FormData) {
     : await prisma.tenant.create({ data });
   await audit("Tenant", parsed.id ? "UPDATE" : "CREATE", row);
   revalidatePath("/admin/tenants");
+  revalidatePath(`/admin/floors/${parsed.floorId}/editor`);
   revalidatePath("/");
 }
 
@@ -267,6 +268,7 @@ export async function saveFloorGraphAction(input: {
     tenantId: string | null;
     shape: "BOX" | "CYLINDER" | "WEDGE" | "ESCALATOR" | "STAIRS" | "PLANT" | "CHAIR" | "TABLE" | "BENCH" | "STREET_LIGHT" | "COMPUTER" | "TRIANGLE" | "POLYGON";
     pointsData?: string | null;
+    logoURL?: string | null;
   }>;
   nodes: Array<{
     id: string;
@@ -348,6 +350,7 @@ export async function saveFloorGraphAction(input: {
           tenantId: b.tenantId,
           shape: b.shape,
           pointsData: b.pointsData,
+          logoURL: b.logoURL,
         })),
       });
     }

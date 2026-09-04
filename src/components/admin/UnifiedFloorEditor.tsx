@@ -128,10 +128,14 @@ function SelectionProjector({
 export function UnifiedFloorEditor({
   imageUrl,
   tenantColors,
+  tenantLogos,
+  tenantLogosByName,
   placementShape = "BOX",
 }: {
   imageUrl?: string | null;
   tenantColors: Record<string, string>;
+  tenantLogos: Record<string, string | null>;
+  tenantLogosByName: Record<string, string | null>;
   placementShape?: DraftBlock["shape"];
 }) {
   const tool = useAdminStore((s) => s.tool);
@@ -169,9 +173,13 @@ export function UnifiedFloorEditor({
           color: b.tenantId ? tenantColors[b.tenantId] ?? "#64748b" : (b.color || emptyColor),
           selected: selectedBlockIds.includes(b.id),
           label: b.blockName,
+          logoURL: b.logoURL
+            ?? (b.tenantId ? tenantLogos[b.tenantId] ?? null : null)
+            ?? tenantLogosByName[b.blockName.trim().toLowerCase()]
+            ?? null,
         };
       }),
-    [blocks, selectedBlockIds, tenantColors]
+    [blocks, selectedBlockIds, tenantColors, tenantLogos, tenantLogosByName]
   );
 
   const nodeMap = new Map(nodes.map((n) => [n.id, n]));

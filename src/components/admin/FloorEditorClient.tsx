@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useTransition, useState } from "react";
+import { useRouter } from "next/navigation";
 import { saveFloorGraphAction } from "@/app/actions/admin";
 import { UnifiedFloorEditor } from "@/components/admin/UnifiedFloorEditor";
 import { useAdminStore, type DraftBlock, type DraftEdge, type DraftNode } from "@/store/useAdminStore";
@@ -33,7 +34,7 @@ export function FloorEditorClient({
   floorName: string;
   imageUrl?: string | null;
   initial: { blocks: DraftBlock[]; nodes: DraftNode[]; edges: DraftEdge[] };
-  tenants: { id: string; tenantName: string; category: { colorHex: string } }[];
+  tenants: { id: string; tenantName: string; logoURL: string | null; category: { colorHex: string } }[];
 }) {
   const hydrate = useAdminStore((s) => s.hydrate);
   const tool = useAdminStore((s) => s.tool);
@@ -58,10 +59,23 @@ export function FloorEditorClient({
   const [isPanelOpen, setIsPanelOpen] = useState(true);
   const [shapeMenuOpen, setShapeMenuOpen] = useState(false);
   const [placementShape, setPlacementShape] = useState<DraftBlock["shape"]>("BOX");
+  const router = useRouter();
 
   useEffect(() => {
     hydrate(initial);
-  }, [floorId]);
+  }, [floorId, initial, hydrate]);
+
+  useEffect(() => {
+    const refreshTenantData = () => {
+      if (!useAdminStore.getState().dirty) router.refresh();
+    };
+    window.addEventListener("focus", refreshTenantData);
+    document.addEventListener("visibilitychange", refreshTenantData);
+    return () => {
+      window.removeEventListener("focus", refreshTenantData);
+      document.removeEventListener("visibilitychange", refreshTenantData);
+    };
+  }, [router]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -82,6 +96,14 @@ export function FloorEditorClient({
 
   const tenantColors = useMemo(
     () => Object.fromEntries(tenants.map((t) => [t.id, t.category.colorHex])),
+    [tenants]
+  );
+  const tenantLogos = useMemo(
+    () => Object.fromEntries(tenants.map((t) => [t.id, t.logoURL])),
+    [tenants]
+  );
+  const tenantLogosByName = useMemo(
+    () => Object.fromEntries(tenants.map((t) => [t.tenantName.trim().toLowerCase(), t.logoURL])),
     [tenants]
   );
 
@@ -313,11 +335,13 @@ export function FloorEditorClient({
           <div className="absolute top-4 left-4 z-10 pointer-events-none">
             <h1 className="text-xl md:text-2xl font-black text-slate-800 dark:text-white drop-shadow-md tracking-tight">{floorName} editor</h1>
           </div>
-          <UnifiedFloorEditor imageUrl={showMap ? imageUrl : null} tenantColors={tenantColors} placementShape={placementShape} />
+          <UnifiedFloorEditor imageUrl={showMap ? imageUrl : null} tenantColors={tenantColors} tenantLogos={tenantLogos} tenantLogosByName={tenantLogosByName} placementShape={placementShape} />
         </div>
         {/* Floating Right Property Panel */}
         {(selectedBlock || selectedNode || multiSelected) && (
-          <div className="absolute top-4 right-4 z-10 flex flex-col items-end gap-2 w-80 pointer-events-none">
+          <>
+            <div className="absolute inset-0 z-20 bg-slate-950/35 pointer-events-none" aria-hidden="true" />
+            <div className="absolute top-4 right-4 z-40 flex flex-col items-end gap-2 w-80 pointer-events-none">
             <div className="pointer-events-auto">
               <button 
                 onClick={() => setIsPanelOpen(!isPanelOpen)}
@@ -356,7 +380,11 @@ export function FloorEditorClient({
                           <select
                             className="w-full h-7 text-xs rounded bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 px-1 border border-slate-300 dark:border-slate-700 focus:outline-none"
                             value={selectedBlock.tenantId ?? ""}
-                            onChange={(e) => upsertBlock({ ...selectedBlock, tenantId: e.target.value || null })}
+                            onChange={(e) => {
+                              const tenantId = e.target.value || null;
+                              const tenant = tenants.find((item) => item.id === tenantId);
+                              upsertBlock({ ...selectedBlock, tenantId, logoURL: tenant?.logoURL ?? null });
+                            }}
                           >
                             <option value="">Unassigned</option>
                             {tenants.map((t) => (
@@ -364,6 +392,33 @@ export function FloorEditorClient({
                             ))}
                           </select>
                         </div>
+                      </div>
+                      <div>
+                        <div className="mb-0.5 flex items-center justify-between">
+                          <label className="text-[9px] text-slate-500 dark:text-slate-400 uppercase tracking-wider font-semibold">Block Logo URL</label>
+                          <button
+                            type="button"
+                            disabled={!selectedBlock.tenantId}
+                            onClick={() => {
+                              const tenant = tenants.find((item) => item.id === selectedBlock.tenantId);
+                              if (tenant?.logoURL) {
+                                upsertBlock({ ...selectedBlock, logoURL: tenant.logoURL });
+                              } else {
+                                alert("This tenant does not have a logo URL saved yet.");
+                              }
+                            }}
+                            className="text-[9px] font-bold text-sky-600 hover:text-sky-500 disabled:cursor-not-allowed disabled:opacity-40"
+                          >
+                            Use tenant logo
+                          </button>
+                        </div>
+                        <input
+                          type="url"
+                          className="w-full h-7 text-xs rounded bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 px-2 border border-slate-300 dark:border-slate-700 focus:outline-none"
+                          value={selectedBlock.logoURL ?? ""}
+                          onChange={(e) => upsertBlock({ ...selectedBlock, logoURL: e.target.value || null })}
+                          placeholder="https://example.com/logo.png"
+                        />
                       </div>
                       <div className="flex gap-2">
                         <div className="flex-1">
@@ -500,7 +555,8 @@ export function FloorEditorClient({
                 ) : null}
               </div>
             )}
-          </div>
+            </div>
+          </>
         )}
       </div>
 

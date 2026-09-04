@@ -119,6 +119,7 @@ model FloorBlock {
   tenantId  String?
   shape     String  @default("BOX")
   pointsData String?
+  logoURL   String?
   floor     Floor   @relation(fields: [floorId], references: [id], onDelete: Cascade)
   tenant    Tenant? @relation(fields: [tenantId], references: [id])
 
