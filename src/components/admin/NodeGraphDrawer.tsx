@@ -19,12 +19,14 @@ export function NodeGraphDrawer() {
   const tool = useAdminStore((s) => s.tool);
   const nodes = useAdminStore((s) => s.nodes);
   const edges = useAdminStore((s) => s.edges);
-  const selectedNodeId = useAdminStore((s) => s.selectedNodeId);
+  const selectedNodeIds = useAdminStore((s) => s.selectedNodeIds);
   const edgeFromId = useAdminStore((s) => s.edgeFromId);
   const selectNode = useAdminStore((s) => s.selectNode);
   const upsertNode = useAdminStore((s) => s.upsertNode);
   const addEdge = useAdminStore((s) => s.addEdge);
   const setEdgeFrom = useAdminStore((s) => s.setEdgeFrom);
+
+  const selectedNodeId = selectedNodeIds.length === 1 ? selectedNodeIds[0] : null;
 
   const nodeMap = new Map(nodes.map((n) => [n.id, n]));
   const selected = nodes.find((n) => n.id === selectedNodeId);
