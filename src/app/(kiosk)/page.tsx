@@ -14,6 +14,9 @@ export default async function KioskHomePage() {
   const graph = graphFromRecords({ nodes, edges });
 
   const adjustY = (floorId: string, y: number) => y + ((floorLevelMap[floorId] || 1) - 1) * FLOOR_HEIGHT;
+  const tenantLogoByName = Object.fromEntries(
+    data.tenants.map((tenant) => [tenant.tenantName.trim().toLowerCase(), tenant.logoURL])
+  );
 
   const mappedBlocks = blocks.map((b) => ({
     id: b.id,
@@ -25,10 +28,15 @@ export default async function KioskHomePage() {
     scaleX: b.scaleX,
     scaleY: b.scaleY,
     scaleZ: b.scaleZ,
+    rotationY: b.rotationY,
     shape: b.shape.trim().toUpperCase(),
     pointsData: b.pointsData,
     color: b.tenant?.category.colorHex,
     label: b.tenant?.tenantName ?? b.blockName,
+    logoURL: b.logoURL
+      ?? b.tenant?.logoURL
+      ?? tenantLogoByName[b.blockName.trim().toLowerCase()]
+      ?? null,
   }));
 
   const categories = await prisma.category.findMany({

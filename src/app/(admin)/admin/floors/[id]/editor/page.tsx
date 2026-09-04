@@ -42,7 +42,8 @@ export default async function FloorEditorPage({ params }: { params: { id: string
         initial={{
           blocks: floor.floorBlocks.map(b => ({
             ...b,
-            shape: b.shape as "BOX" | "CYLINDER" | "WEDGE" | "ESCALATOR" | "STAIRS" | "PLANT" | "CHAIR" | "TABLE" | "BENCH" | "STREET_LIGHT" | "COMPUTER" | "TRIANGLE" | "POLYGON"
+            shape: b.shape as "BOX" | "CYLINDER" | "WEDGE" | "ESCALATOR" | "STAIRS" | "PLANT" | "CHAIR" | "TABLE" | "BENCH" | "STREET_LIGHT" | "COMPUTER" | "TRIANGLE" | "POLYGON",
+            logoURL: b.logoURL
           })),
           nodes,
           edges,
