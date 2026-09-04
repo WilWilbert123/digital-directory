@@ -7,10 +7,27 @@ export async function GET() {
   const edges = await prisma.pathEdge.findMany();
   const tenants = await prisma.tenant.findMany();
   const floors = await prisma.floor.findMany();
-  // Cast node types to PathNodeType for type safety
-  const nodes = rawNodes.map((n) => ({ ...n, type: n.type as PathNodeType }));
 
   const floorLevelMap = Object.fromEntries(floors.map(f => [f.id, f.levelNumber]));
+
+  // Explicitly construct typed node records to prevent TypeScript widening 'type' to string
+  const nodes: Array<{
+    id: string;
+    nodeName: string;
+    type: PathNodeType;
+    floorId: string;
+    positionX: number;
+    positionY: number;
+    positionZ: number;
+  }> = rawNodes.map((n) => ({
+    id: n.id,
+    nodeName: n.nodeName,
+    type: n.type as PathNodeType,
+    floorId: n.floorId,
+    positionX: n.positionX,
+    positionY: n.positionY,
+    positionZ: n.positionZ,
+  }));
 
   const verticalNodes = nodes.filter(n => ["ELEVATOR", "ESCALATOR", "STAIRS"].includes(n.type));
   const verticalGroups = verticalNodes.reduce((acc, n) => {
@@ -20,13 +37,13 @@ export async function GET() {
     return acc;
   }, {} as Record<string, typeof nodes>);
 
-  const extraEdges = [];
+  const extraEdges: Array<{ id: string; fromNodeId: string; toNodeId: string; weight: number; isAccessible: boolean }> = [];
   for (const group of Object.values(verticalGroups)) {
     if (group.length < 2) continue;
     group.sort((a, b) => floorLevelMap[a.floorId] - floorLevelMap[b.floorId]);
     for (let i = 0; i < group.length - 1; i++) {
-      extraEdges.push({ id: `cross1`, fromNodeId: group[i].id, toNodeId: group[i+1].id, weight: 15, isAccessible: true });
-      extraEdges.push({ id: `cross2`, fromNodeId: group[i+1].id, toNodeId: group[i].id, weight: 15, isAccessible: true });
+      extraEdges.push({ id: `cross_${i}_a`, fromNodeId: group[i].id, toNodeId: group[i+1].id, weight: 15, isAccessible: true });
+      extraEdges.push({ id: `cross_${i}_b`, fromNodeId: group[i+1].id, toNodeId: group[i].id, weight: 15, isAccessible: true });
     }
   }
 

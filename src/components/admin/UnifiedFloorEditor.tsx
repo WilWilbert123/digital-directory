@@ -309,6 +309,7 @@ export function UnifiedFloorEditor({
         scaleX: 2,
         scaleY: 2,
         scaleZ: 2,
+        rotationY: 0,
         shape: "BOX",
         tenantId: null,
       });

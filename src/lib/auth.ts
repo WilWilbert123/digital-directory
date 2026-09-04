@@ -1,8 +1,13 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
-import type { UserRole } from "@prisma/client";
 
 const COOKIE = "bispos_session";
+
+export type UserRole = "SUPER_ADMIN" | "MALL_ADMIN" | "KIOSK_OPERATOR";
+
+export function isUserRole(value: string): value is UserRole {
+  return value === "SUPER_ADMIN" || value === "MALL_ADMIN" || value === "KIOSK_OPERATOR";
+}
 
 export type SessionUser = {
   id: string;

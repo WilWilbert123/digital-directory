@@ -16,9 +16,11 @@ export function DynamicBlockEditor({
 }) {
   const tool = useAdminStore((s) => s.tool);
   const blocks = useAdminStore((s) => s.blocks);
-  const selectedBlockId = useAdminStore((s) => s.selectedBlockId);
+  const selectedBlockIds = useAdminStore((s) => s.selectedBlockIds);
   const selectBlock = useAdminStore((s) => s.selectBlock);
   const upsertBlock = useAdminStore((s) => s.upsertBlock);
+
+  const selectedBlockId = selectedBlockIds.length === 1 ? selectedBlockIds[0] : null;
 
   const [transformMode, setTransformMode] = useState<"translate" | "scale">("translate");
 
@@ -78,6 +80,8 @@ export function DynamicBlockEditor({
                 scaleX: 8,
                 scaleY: 4,
                 scaleZ: 8,
+                rotationY: 0,
+                shape: "BOX",
                 tenantId: null,
               });
               selectBlock(id);

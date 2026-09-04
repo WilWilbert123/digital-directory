@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import prisma from "@/lib/prisma";
-import { createSession, destroySession, getSession } from "@/lib/auth";
+import { createSession, destroySession, getSession, isUserRole } from "@/lib/auth";
 import { publishSync } from "@/lib/real-time-sync";
 import { KIOSK_ID } from "@/lib/utils";
 
@@ -22,6 +22,7 @@ export async function loginAction(formData: FormData) {
   if (!user || !user.isActive) return { error: "Invalid credentials" };
   const ok = await bcrypt.compare(password, user.password);
   if (!ok) return { error: "Invalid credentials" };
+  if (!isUserRole(user.role)) return { error: "Invalid account role" };
   await createSession({ id: user.id, username: user.username, fullName: user.fullName, role: user.role });
   redirect("/admin/dashboard");
 }
