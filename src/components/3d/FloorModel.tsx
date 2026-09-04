@@ -38,6 +38,7 @@ export function FloorModel({
   blockColor,
   fixedFloorSize,
   hideBlockOverlays = false,
+  editorLightMode = false,
 }: {
   imageUrl?: string | null;
   blocks: FloorBlockMesh[];
@@ -53,6 +54,7 @@ export function FloorModel({
   blockColor?: string;
   fixedFloorSize?: number;
   hideBlockOverlays?: boolean;
+  editorLightMode?: boolean;
 }) {
   const visibleBlocks = strictLevel != null 
     ? blocks.filter(b => (b.levelNumber ?? 1) === strictLevel)
@@ -107,7 +109,7 @@ export function FloorModel({
         const bounds = getFloorBounds(floorIdx + 1);
         return (
         <group key={`floor-plane-${floorIdx}`} position={[0, floorIdx * 8, 0]}>
-          {interactive ? <gridHelper args={[bounds.width, bounds.depth, "#334155", "#1e293b"]} position={[bounds.centerX, 0.01, bounds.centerZ]} /> : null}
+          {interactive ? <gridHelper args={[bounds.width, bounds.depth, editorLightMode ? "#94a3b8" : "#334155", editorLightMode ? "#cbd5e1" : "#1e293b"]} position={[bounds.centerX, 0.01, bounds.centerZ]} /> : null}
           <mesh
             rotation={[-Math.PI / 2, 0, 0]}
             position={[bounds.centerX, 0, bounds.centerZ]}
@@ -124,7 +126,7 @@ export function FloorModel({
           >
             <planeGeometry args={[bounds.width, bounds.depth]} />
             <meshStandardMaterial 
-              color={interactive ? "#0b1220" : floorColor ?? forceColor ?? "#8B5FBF"} 
+              color={interactive ? (editorLightMode ? "#f8fafc" : "#0b1220") : floorColor ?? forceColor ?? "#8B5FBF"} 
               roughness={0.9} 
               transparent={interactive} 
               opacity={interactive ? 0.4 : 1.0} 

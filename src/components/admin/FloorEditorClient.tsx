@@ -340,7 +340,6 @@ export function FloorEditorClient({
         {/* Floating Right Property Panel */}
         {(selectedBlock || selectedNode || multiSelected) && (
           <>
-            <div className="absolute inset-0 z-20 bg-slate-950/35 pointer-events-none" aria-hidden="true" />
             <div className="absolute top-4 right-4 z-40 flex flex-col items-end gap-2 w-80 pointer-events-none">
             <div className="pointer-events-auto">
               <button 

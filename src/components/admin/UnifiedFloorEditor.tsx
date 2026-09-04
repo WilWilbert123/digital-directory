@@ -9,6 +9,7 @@ import { PerspectiveCamera, MapControls, Html, Edges, Line, Sphere } from "@reac
 import { FloorModel } from "@/components/3d/FloorModel";
 import { HumanAvatar } from "@/components/3d/HumanAvatar";
 import { useAdminStore, type DraftBlock, type DraftNode } from "@/store/useAdminStore";
+import { useTheme } from "next-themes";
 
 function DragListener({ isDragging, onFloorPointerMove }: { isDragging: boolean; onFloorPointerMove: (point: THREE.Vector3) => void; }) {
   const { gl, camera } = useThree();
@@ -138,6 +139,8 @@ export function UnifiedFloorEditor({
   tenantLogosByName: Record<string, string | null>;
   placementShape?: DraftBlock["shape"];
 }) {
+  const { resolvedTheme } = useTheme();
+  const isLightMode = resolvedTheme === "light";
   const tool = useAdminStore((s) => s.tool);
   const blocks = useAdminStore((s) => s.blocks);
   const nodes = useAdminStore((s) => s.nodes);
@@ -390,7 +393,7 @@ export function UnifiedFloorEditor({
       <MarqueeOverlay isActive={tool === "marquee"} onSelect={setMarqueeBounds} />
 
       <Canvas shadows>
-        <color attach="background" args={["#020617"]} />
+        <color attach="background" args={[isLightMode ? "#e2e8f0" : "#020617"]} />
         <PerspectiveCamera makeDefault position={[16, 22, 16]} fov={50} />
         <ambientLight intensity={0.5} />
         <directionalLight position={[10, 18, 8]} intensity={1.2} castShadow />
@@ -405,6 +408,7 @@ export function UnifiedFloorEditor({
             onBlockClick={(id, append) => { if (tool === "select" && !isDragging) selectBlock(id, append); }}
             onBlockPointerDown={tool === "select" ? onBlockPointerDown : undefined}
             onPlaneClick={onPlaneClick}
+            editorLightMode={isLightMode}
           />
           <DragListener isDragging={isDragging} onFloorPointerMove={onFloorPointerMove} />
 
