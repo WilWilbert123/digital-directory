@@ -30,6 +30,9 @@ model Floor {
   image2dURL  String?
   /// Spec field: 3dModelURL
   model3dURL  String?
+  shape       String       @default("BOX")
+  pointsData  String?
+  colorHex    String?
   isActive    Boolean      @default(true)
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
@@ -106,22 +109,23 @@ model PathEdge {
 }
 
 model FloorBlock {
-  id        String  @id @default(cuid())
-  blockName String
-  posX      Float
-  posY      Float
-  posZ      Float
-  scaleX    Float   @default(1)
-  scaleY    Float   @default(1)
-  scaleZ    Float   @default(1)
-  rotationY Float   @default(0)
-  floorId   String
-  tenantId  String?
-  shape     String  @default("BOX")
+  id         String  @id @default(cuid())
+  blockName  String
+  posX       Float
+  posY       Float
+  posZ       Float
+  scaleX     Float   @default(1)
+  scaleY     Float   @default(1)
+  scaleZ     Float   @default(1)
+  rotationY  Float   @default(0)
+  floorId    String
+  tenantId   String?
+  shape      String  @default("BOX")
   pointsData String?
-  logoURL   String?
-  floor     Floor   @relation(fields: [floorId], references: [id], onDelete: Cascade)
-  tenant    Tenant? @relation(fields: [tenantId], references: [id])
+  colorHex   String?
+  logoURL    String?
+  floor      Floor   @relation(fields: [floorId], references: [id], onDelete: Cascade)
+  tenant     Tenant? @relation(fields: [tenantId], references: [id])
 
   @@index([floorId])
   @@index([tenantId])

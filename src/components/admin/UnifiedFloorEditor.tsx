@@ -132,12 +132,14 @@ export function UnifiedFloorEditor({
   tenantLogos,
   tenantLogosByName,
   placementShape = "BOX",
+  floorData,
 }: {
   imageUrl?: string | null;
   tenantColors: Record<string, string>;
   tenantLogos: Record<string, string | null>;
   tenantLogosByName: Record<string, string | null>;
   placementShape?: DraftBlock["shape"];
+  floorData?: { levelNumber: number; shape?: string; pointsData?: string | null; colorHex?: string | null };
 }) {
   const { resolvedTheme } = useTheme();
   const isLightMode = resolvedTheme === "light";
@@ -171,9 +173,11 @@ export function UnifiedFloorEditor({
           // Simple hash for alternating colors
           emptyColor = b.id.length > 5 && b.id.charCodeAt(5) % 2 === 0 ? "#334155" : "#94a3b8";
         } catch(e) {}
+        const isFloor = b.shape?.startsWith("FLOOR_");
+        const defaultColor = isFloor ? (floorData?.colorHex ?? "#8B5FBF") : emptyColor;
         return {
           ...b,
-          color: b.tenantId ? tenantColors[b.tenantId] ?? "#64748b" : (b.color || emptyColor),
+          color: b.tenantId ? tenantColors[b.tenantId] ?? "#64748b" : (b.colorHex || defaultColor),
           selected: selectedBlockIds.includes(b.id),
           label: b.blockName,
           logoURL: b.logoURL
@@ -325,9 +329,17 @@ export function UnifiedFloorEditor({
         BENCH: { scaleX: 2, scaleY: 1.5, scaleZ: 1.5 },
         STREET_LIGHT: { scaleX: 1.5, scaleY: 2.5, scaleZ: 1.5 },
         COMPUTER: { scaleX: 1.5, scaleY: 1.5, scaleZ: 1.5 },
+        TREE: { scaleX: 1.5, scaleY: 2.5, scaleZ: 1.5 },
+        AMAZON_PLANT: { scaleX: 2.0, scaleY: 2.0, scaleZ: 2.0 },
         TRIANGLE: { scaleX: 2, scaleY: 2, scaleZ: 2 },
         POLYGON: { scaleX: 2, scaleY: 2, scaleZ: 2 },
-      }[placementShape];
+        FLOOR_CIRCLE: { scaleX: 10, scaleY: 1, scaleZ: 10 },
+        FLOOR_HALF_CIRCLE: { scaleX: 10, scaleY: 1, scaleZ: 10 },
+        FLOOR_SQUARE: { scaleX: 10, scaleY: 1, scaleZ: 10 },
+        FLOOR_TRIANGLE: { scaleX: 10, scaleY: 1, scaleZ: 10 },
+        FLOOR_HALF_SQUARE: { scaleX: 10, scaleY: 1, scaleZ: 10 },
+      }[placementShape!] || { scaleX: 2, scaleY: 2, scaleZ: 2 };
+      const isFloorShape = placementShape?.startsWith("FLOOR_");
       upsertBlock({
         id,
         blockName: `BLK-${blocks.length + 1}`,
@@ -341,6 +353,7 @@ export function UnifiedFloorEditor({
           ? JSON.stringify([[0, -0.5], [0.45, -0.25], [0.45, 0.25], [0, 0.5], [-0.45, 0.25], [-0.45, -0.25]])
           : null,
         tenantId: null,
+        colorHex: isFloorShape ? (floorData?.colorHex ?? "#8B5FBF") : null,
       });
       selectBlock(id);
     } else if (tool === "node") {
@@ -404,6 +417,7 @@ export function UnifiedFloorEditor({
           <FloorModel
             imageUrl={imageUrl}
             blocks={meshes}
+            floorsData={floorData ? [{ ...floorData, levelNumber: 1 }] : undefined}
             interactive={tool === "block" || tool === "node" || tool === "edge" || tool === "select"}
             onBlockClick={(id, append) => { if (tool === "select" && !isDragging) selectBlock(id, append); }}
             onBlockPointerDown={tool === "select" ? onBlockPointerDown : undefined}

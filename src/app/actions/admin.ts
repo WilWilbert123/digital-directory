@@ -52,6 +52,9 @@ const floorSchema = z.object({
   levelNumber: z.coerce.number().int(),
   image2dURL: z.string().optional().nullable(),
   model3dURL: z.string().optional().nullable(),
+  shape: z.string().optional(),
+  pointsData: z.string().optional().nullable(),
+  colorHex: z.string().optional().nullable(),
   isActive: z.coerce.boolean().optional(),
 });
 
@@ -64,6 +67,9 @@ export async function saveFloorAction(formData: FormData) {
     levelNumber: formData.get("levelNumber"),
     image2dURL: formData.get("image2dURL") || null,
     model3dURL: formData.get("model3dURL") || null,
+    shape: formData.get("shape") || undefined,
+    pointsData: formData.get("pointsData") || null,
+    colorHex: formData.get("colorHex") || null,
     isActive: formData.get("isActive") === "on",
   });
   const data = {
@@ -72,6 +78,9 @@ export async function saveFloorAction(formData: FormData) {
     levelNumber: parsed.levelNumber,
     image2dURL: parsed.image2dURL,
     model3dURL: parsed.model3dURL,
+    shape: parsed.shape ?? "BOX",
+    pointsData: parsed.pointsData,
+    colorHex: parsed.colorHex,
     isActive: parsed.isActive ?? true,
   };
   try {
@@ -266,9 +275,10 @@ export async function saveFloorGraphAction(input: {
     scaleZ: number;
     rotationY: number;
     tenantId: string | null;
-    shape: "BOX" | "CYLINDER" | "WEDGE" | "ESCALATOR" | "STAIRS" | "PLANT" | "CHAIR" | "TABLE" | "BENCH" | "STREET_LIGHT" | "COMPUTER" | "TRIANGLE" | "POLYGON";
+    shape: "BOX" | "CYLINDER" | "WEDGE" | "ESCALATOR" | "STAIRS" | "PLANT" | "CHAIR" | "TABLE" | "BENCH" | "STREET_LIGHT" | "COMPUTER" | "TRIANGLE" | "POLYGON" | "TREE" | "AMAZON_PLANT" | "FLOOR_CIRCLE" | "FLOOR_HALF_CIRCLE" | "FLOOR_SQUARE" | "FLOOR_TRIANGLE" | "FLOOR_HALF_SQUARE";
     pointsData?: string | null;
     logoURL?: string | null;
+    colorHex?: string | null;
   }>;
   nodes: Array<{
     id: string;
@@ -351,6 +361,7 @@ export async function saveFloorGraphAction(input: {
           shape: b.shape,
           pointsData: b.pointsData,
           logoURL: b.logoURL,
+          colorHex: b.colorHex,
         })),
       });
     }

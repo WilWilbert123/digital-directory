@@ -130,6 +130,7 @@ export function PathfindingCanvas({
   nodes,
   route,
   imageUrl,
+  floorsData,
   isPlayingAnimation = false,
   onAnimationComplete,
 }: {
@@ -137,6 +138,7 @@ export function PathfindingCanvas({
   nodes: GraphNode[];
   route: PathResult | null;
   imageUrl?: string | null;
+  floorsData?: { levelNumber: number; shape?: string; pointsData?: string | null; colorHex?: string | null }[];
   isPlayingAnimation?: boolean;
   onAnimationComplete?: () => void;
 }) {
@@ -275,11 +277,10 @@ export function PathfindingCanvas({
         <Suspense fallback={<Html center>Loading 3D map…</Html>}>
           <FloorModel 
             blocks={blocks} 
+            floorsData={floorsData}
             imageUrl={blocks.length > 0 ? null : imageUrl} 
             strictLevel={activeLevel}
             fixedFloorSize={45}
-            floorColor="#5d7c7e"
-            blockColor="#a3a874"
           />
           {markers.map((n) => {
             const pos = [n.position.x, n.position.y, n.position.z];

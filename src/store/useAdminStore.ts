@@ -15,9 +15,9 @@ export type DraftBlock = {
   scaleY: number;
   scaleZ: number;
   rotationY: number;
-  shape: "BOX" | "CYLINDER" | "WEDGE" | "ESCALATOR" | "STAIRS" | "PLANT" | "CHAIR" | "TABLE" | "BENCH" | "STREET_LIGHT" | "COMPUTER" | "TRIANGLE" | "POLYGON";
+  shape: "BOX" | "CYLINDER" | "WEDGE" | "ESCALATOR" | "STAIRS" | "PLANT" | "CHAIR" | "TABLE" | "BENCH" | "STREET_LIGHT" | "COMPUTER" | "TRIANGLE" | "POLYGON" | "TREE" | "AMAZON_PLANT" | "FLOOR_CIRCLE" | "FLOOR_HALF_CIRCLE" | "FLOOR_SQUARE" | "FLOOR_TRIANGLE" | "FLOOR_HALF_SQUARE";
   pointsData?: string | null;
-  color?: string | null;
+  colorHex?: string | null;
   logoURL?: string | null;
   tenantId: string | null;
 };

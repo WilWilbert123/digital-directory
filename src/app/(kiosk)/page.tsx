@@ -3,6 +3,9 @@ import { getKioskBootstrapAction, getWayfindingGraphAction } from "@/app/actions
 import { graphFromRecords } from "@/lib/pathfinding";
 import { UnifiedDashboard } from "@/components/kiosk/UnifiedDashboard";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function KioskHomePage() {
   const data = await getKioskBootstrapAction();
   
@@ -10,34 +13,42 @@ export default async function KioskHomePage() {
     include: { tenant: { include: { category: true } } } 
   });
 
+  const floors = await prisma.floor.findMany();
+
   const { nodes, edges, floorLevelMap, FLOOR_HEIGHT } = await getWayfindingGraphAction();
   const graph = graphFromRecords({ nodes, edges });
 
+  const floorColorMap = Object.fromEntries(floors.map((f) => [f.id, f.colorHex]));
   const adjustY = (floorId: string, y: number) => y + ((floorLevelMap[floorId] || 1) - 1) * FLOOR_HEIGHT;
   const tenantLogoByName = Object.fromEntries(
     data.tenants.map((tenant) => [tenant.tenantName.trim().toLowerCase(), tenant.logoURL])
   );
 
-  const mappedBlocks = blocks.map((b) => ({
-    id: b.id,
-    blockName: b.blockName,
-    levelNumber: floorLevelMap[b.floorId] || 1,
-    posX: b.posX,
-    posY: adjustY(b.floorId, b.posY),
-    posZ: b.posZ,
-    scaleX: b.scaleX,
-    scaleY: b.scaleY,
-    scaleZ: b.scaleZ,
-    rotationY: b.rotationY,
-    shape: b.shape.trim().toUpperCase(),
-    pointsData: b.pointsData,
-    color: b.tenant?.category.colorHex,
-    label: b.tenant?.tenantName ?? b.blockName,
-    logoURL: b.logoURL
-      ?? b.tenant?.logoURL
-      ?? tenantLogoByName[b.blockName.trim().toLowerCase()]
-      ?? null,
-  }));
+  const mappedBlocks = blocks.map((b) => {
+    const isFloorPiece = b.shape.trim().toUpperCase().startsWith("FLOOR_");
+    const floorColor = floorColorMap[b.floorId] ?? "#8B5FBF";
+    return {
+      id: b.id,
+      blockName: b.blockName,
+      levelNumber: floorLevelMap[b.floorId] || 1,
+      posX: b.posX,
+      posY: adjustY(b.floorId, b.posY),
+      posZ: b.posZ,
+      scaleX: b.scaleX,
+      scaleY: b.scaleY,
+      scaleZ: b.scaleZ,
+      rotationY: b.rotationY,
+      shape: b.shape.trim().toUpperCase(),
+      pointsData: b.pointsData,
+      colorHex: b.colorHex ?? (isFloorPiece ? floorColor : null),
+      color: b.colorHex ?? (isFloorPiece ? floorColor : b.tenant?.category.colorHex),
+      label: b.tenant?.tenantName ?? b.blockName,
+      logoURL: b.logoURL
+        ?? b.tenant?.logoURL
+        ?? tenantLogoByName[b.blockName.trim().toLowerCase()]
+        ?? null,
+    };
+  });
 
   const categories = await prisma.category.findMany({
     orderBy: { categoryName: "asc" }
@@ -56,6 +67,12 @@ export default async function KioskHomePage() {
       startNodeId={data.startNodeId}
       nodes={graph.nodes}
       blocks={mappedBlocks}
+      floorsData={floors.map(f => ({
+        levelNumber: f.levelNumber,
+        shape: f.shape,
+        pointsData: f.pointsData,
+        colorHex: f.colorHex
+      }))}
     />
   );
 }

@@ -39,10 +39,16 @@ export default async function FloorEditorPage({ params }: { params: { id: string
         floorName={floor.floorName}
         imageUrl={floor.image2dURL}
         tenants={tenants}
+        floorData={{
+          levelNumber: floor.levelNumber,
+          shape: floor.shape,
+          pointsData: floor.pointsData,
+          colorHex: floor.colorHex,
+        }}
         initial={{
           blocks: floor.floorBlocks.map(b => ({
             ...b,
-            shape: b.shape as "BOX" | "CYLINDER" | "WEDGE" | "ESCALATOR" | "STAIRS" | "PLANT" | "CHAIR" | "TABLE" | "BENCH" | "STREET_LIGHT" | "COMPUTER" | "TRIANGLE" | "POLYGON",
+            shape: b.shape as "BOX" | "CYLINDER" | "WEDGE" | "ESCALATOR" | "STAIRS" | "PLANT" | "CHAIR" | "TABLE" | "BENCH" | "STREET_LIGHT" | "COMPUTER" | "TRIANGLE" | "POLYGON" | "TREE" | "AMAZON_PLANT" | "FLOOR_CIRCLE" | "FLOOR_HALF_CIRCLE" | "FLOOR_SQUARE" | "FLOOR_TRIANGLE" | "FLOOR_HALF_SQUARE",
             logoURL: b.logoURL
           })),
           nodes,

@@ -17,6 +17,7 @@ export type FloorBlockMesh = {
   shape?: string;
   pointsData?: string | null;
   color?: string;
+  colorHex?: string | null;
   selected?: boolean;
   label?: string;
   logoURL?: string | null;
@@ -39,6 +40,7 @@ export function FloorModel({
   fixedFloorSize,
   hideBlockOverlays = false,
   editorLightMode = false,
+  floorsData,
 }: {
   imageUrl?: string | null;
   blocks: FloorBlockMesh[];
@@ -55,6 +57,7 @@ export function FloorModel({
   fixedFloorSize?: number;
   hideBlockOverlays?: boolean;
   editorLightMode?: boolean;
+  floorsData?: { levelNumber: number; shape?: string; pointsData?: string | null; colorHex?: string | null }[];
 }) {
   const visibleBlocks = strictLevel != null 
     ? blocks.filter(b => (b.levelNumber ?? 1) === strictLevel)
@@ -107,12 +110,22 @@ export function FloorModel({
     <group>
       {floors.map((floorIdx) => {
         const bounds = getFloorBounds(floorIdx + 1);
+        const floorData = floorsData?.find(f => f.levelNumber === floorIdx + 1);
+        const isCustomPolygon = floorData?.shape === "POLYGON" && floorData.pointsData;
+        const isDefaultBox = !floorData?.shape || floorData.shape === "BOX";
+        const isCircle = floorData?.shape === "CIRCLE";
+        
         return (
         <group key={`floor-plane-${floorIdx}`} position={[0, floorIdx * 8, 0]}>
-          {interactive ? <gridHelper args={[bounds.width, bounds.depth, editorLightMode ? "#94a3b8" : "#334155", editorLightMode ? "#cbd5e1" : "#1e293b"]} position={[bounds.centerX, 0.01, bounds.centerZ]} /> : null}
+          {interactive && isDefaultBox ? (
+            <gridHelper args={[bounds.width, bounds.depth, editorLightMode ? "#94a3b8" : "#334155", editorLightMode ? "#cbd5e1" : "#1e293b"]} position={[bounds.centerX, 0.01, bounds.centerZ]} />
+          ) : null}
+          {interactive && isCircle ? (
+            <polarGridHelper args={[Math.max(bounds.width, bounds.depth) / 2, 16, 8, 64, editorLightMode ? "#94a3b8" : "#334155", editorLightMode ? "#cbd5e1" : "#1e293b"]} position={[bounds.centerX, 0.01, bounds.centerZ]} />
+          ) : null}
           <mesh
-            rotation={[-Math.PI / 2, 0, 0]}
-            position={[bounds.centerX, 0, bounds.centerZ]}
+            rotation={[0, 0, 0]}
+            position={isCustomPolygon ? [0, 0, 0] : [bounds.centerX, 0, bounds.centerZ]}
             receiveShadow
             onPointerDown={(e: ThreeEvent<PointerEvent>) => {
               if (!interactive) return;
@@ -124,9 +137,9 @@ export function FloorModel({
               onPlanePointerMove?.(e.point);
             }}
           >
-            <planeGeometry args={[bounds.width, bounds.depth]} />
+            <FloorShapeGeometry shape={floorData?.shape} bounds={bounds} pointsData={floorData?.pointsData} />
             <meshStandardMaterial 
-              color={interactive ? (editorLightMode ? "#f8fafc" : "#0b1220") : floorColor ?? forceColor ?? "#8B5FBF"} 
+              color={floorData?.colorHex ?? (interactive ? (editorLightMode ? "#f8fafc" : "#0b1220") : floorColor ?? forceColor ?? "#8B5FBF")} 
               roughness={0.9} 
               transparent={interactive} 
               opacity={interactive ? 0.4 : 1.0} 
@@ -137,27 +150,95 @@ export function FloorModel({
         );
       })}
       
-      {visibleBlocks.map((block) => (
-         <BlockMesh
-           key={block.id}
-           block={block}
-           forceColor={forceColor}
-           blockColor={blockColor}
-           hideBlockOverlays={hideBlockOverlays}
-           onBlockPointerDown={onBlockPointerDown}
-           onBlockClick={onBlockClick}
-         />
-      ))}
+      {visibleBlocks.map((block) => {
+        const blockFloor = floorsData?.find((f) => f.levelNumber === (block.levelNumber ?? 1));
+        const currentBlockFloorColor = blockFloor?.colorHex ?? floorColor ?? forceColor ?? "#8B5FBF";
+        return (
+          <BlockMesh
+            key={block.id}
+            block={block}
+            forceColor={forceColor}
+            blockColor={blockColor}
+            floorColor={currentBlockFloorColor}
+            interactive={interactive}
+            hideBlockOverlays={hideBlockOverlays}
+            onBlockPointerDown={onBlockPointerDown}
+            onBlockClick={onBlockClick}
+          />
+        );
+      })}
     </group>
   );
 }
 
 import { useMemo, useState } from "react";
 
+function FloorShapeGeometry({ shape, bounds, pointsData }: { shape?: string; bounds: { width: number; depth: number }; pointsData?: string | null }) {
+  const geometry = useMemo(() => {
+    if (shape === "POLYGON" && pointsData) {
+      try {
+        const points: [number, number][] = JSON.parse(pointsData);
+        if (points.length >= 3) {
+          const s = new THREE.Shape();
+          points.forEach((p, idx) => {
+            if (idx === 0) s.moveTo(p[0], -p[1]);
+            else s.lineTo(p[0], -p[1]);
+          });
+          s.lineTo(points[0][0], -points[0][1]);
+          const g = new THREE.ExtrudeGeometry(s, { depth: 0.1, bevelEnabled: false });
+          g.rotateX(Math.PI / 2);
+          g.translate(0, -0.05, 0);
+          return g;
+        }
+      } catch (e) {
+        console.error("Failed to parse floor polygon points", e);
+      }
+    }
+
+    const s = new THREE.Shape();
+    const w = bounds.width;
+    const d = bounds.depth;
+    const radius = Math.max(w, d) / 2;
+
+    if (shape === "CIRCLE") {
+      s.absarc(0, 0, radius, 0, Math.PI * 2, false);
+    } else if (shape === "HALF_CIRCLE") {
+      s.absarc(0, 0, radius, 0, Math.PI, false);
+      s.lineTo(radius, 0);
+    } else if (shape === "TRIANGLE") {
+      s.moveTo(-w/2, -d/2);
+      s.lineTo(w/2, -d/2);
+      s.lineTo(0, d/2);
+      s.lineTo(-w/2, -d/2);
+    } else if (shape === "HALF_SQUARE") {
+      s.moveTo(-w/2, -d/2);
+      s.lineTo(w/2, -d/2);
+      s.lineTo(-w/2, d/2);
+      s.lineTo(-w/2, -d/2);
+    } else {
+      // BOX / default
+      s.moveTo(-w/2, -d/2);
+      s.lineTo(w/2, -d/2);
+      s.lineTo(w/2, d/2);
+      s.lineTo(-w/2, d/2);
+      s.lineTo(-w/2, -d/2);
+    }
+    
+    const g = new THREE.ExtrudeGeometry(s, { depth: 0.1, bevelEnabled: false });
+    g.rotateX(Math.PI / 2);
+    g.translate(0, -0.05, 0);
+    return g;
+  }, [shape, bounds, pointsData]);
+
+  return <primitive object={geometry} attach="geometry" />;
+}
+
 function BlockMesh({
   block,
   forceColor,
   blockColor,
+  floorColor,
+  interactive = false,
   hideBlockOverlays,
   onBlockPointerDown,
   onBlockClick,
@@ -165,6 +246,8 @@ function BlockMesh({
   block: FloorBlockMesh;
   forceColor?: string;
   blockColor?: string;
+  floorColor?: string;
+  interactive?: boolean;
   hideBlockOverlays: boolean;
   onBlockPointerDown?: (id: string, point: THREE.Vector3, shiftKey: boolean) => void;
   onBlockClick?: (id: string, append: boolean) => void;
@@ -196,12 +279,26 @@ function BlockMesh({
         console.error("Failed to parse polygon points", e);
       }
     }
+    if (shape === "WEDGE") {
+      const s = new THREE.Shape();
+      s.moveTo(0, 0);
+      s.lineTo(0.5, 0);
+      s.absarc(0, 0, 0.5, 0, Math.PI / 2, false);
+      s.lineTo(0, 0);
+      const g = new THREE.ExtrudeGeometry(s, { depth: 1, bevelEnabled: false, curveSegments: 32 });
+      g.rotateX(Math.PI / 2);
+      g.translate(0, 0.5, 0);
+      return g;
+    }
     return null;
   }, [shape, block.pointsData]);
 
+  const isFloorBlock = shape.startsWith("FLOOR_");
+  const effectiveFloorBlockColor = block.colorHex ?? block.color ?? floorColor ?? "#8B5FBF";
+
   return (
     <group
-      position={[block.posX, block.posY + block.scaleY / 2, block.posZ]}
+      position={[block.posX, block.posY + (isFloorBlock ? 0 : block.scaleY / 2), block.posZ]}
       rotation={[0, block.rotationY ?? 0, 0]}
       scale={[block.scaleX, block.scaleY, block.scaleZ]}
       onPointerDown={(e) => {
@@ -216,6 +313,10 @@ function BlockMesh({
         <StairsGeometry selected={block.selected ?? false} />
       ) : shape === "PLANT" ? (
         <PlantGeometry selected={block.selected ?? false} />
+      ) : shape === "TREE" ? (
+        <TreeGeometry selected={block.selected ?? false} />
+      ) : shape === "AMAZON_PLANT" ? (
+        <AmazonPlantGeometry selected={block.selected ?? false} />
       ) : shape === "CHAIR" ? (
         <ChairGeometry selected={block.selected ?? false} />
       ) : shape === "TABLE" ? (
@@ -231,17 +332,32 @@ function BlockMesh({
       ) : (
         <mesh castShadow>
           {customGeometry && <primitive object={customGeometry} attach="geometry" />}
-          {!customGeometry && shape === "CYLINDER" && <cylinderGeometry args={[0.5, 0.5, 1, 32]} />}
-          {!customGeometry && shape === "WEDGE" && <cylinderGeometry args={[0.5, 0.5, 1, 32, 1, false, 0, Math.PI / 2]} />}
-          {!customGeometry && shape !== "CYLINDER" && shape !== "WEDGE" && <boxGeometry args={[1, 1, 1]} />}
-          <meshStandardMaterial
-            color={blockColor ?? forceColor ?? block.color ?? "#e2e8f0"}
-            emissive={block.selected ? "#38bdf8" : (blockColor ?? forceColor ?? block.color ?? "#e2e8f0")}
-            emissiveIntensity={block.selected ? 1.0 : 0.15}
-            roughness={0.7}
-            metalness={0.1}
-          />
-          <Edges linewidth={2} threshold={15} color={block.selected ? "#ffffff" : "#475569"} />
+          {isFloorBlock && <FloorShapeGeometry shape={shape.replace("FLOOR_", "")} bounds={{width: 1, depth: 1}} />}
+          {!customGeometry && !isFloorBlock && shape === "CYLINDER" && <cylinderGeometry args={[0.5, 0.5, 1, 32]} />}
+          {!customGeometry && !isFloorBlock && shape !== "CYLINDER" && <boxGeometry args={[1, 1, 1]} />}
+          {isFloorBlock ? (
+            <meshStandardMaterial
+              color={effectiveFloorBlockColor}
+              roughness={0.9}
+              metalness={0}
+              transparent={interactive}
+              opacity={interactive ? 0.4 : 1.0}
+              polygonOffset
+              polygonOffsetFactor={-1}
+              polygonOffsetUnits={-1}
+            />
+          ) : (
+            <meshStandardMaterial
+              color={blockColor ?? forceColor ?? block.color ?? block.colorHex ?? "#e2e8f0"}
+              emissive={block.selected ? "#38bdf8" : (blockColor ?? forceColor ?? block.color ?? block.colorHex ?? "#e2e8f0")}
+              emissiveIntensity={block.selected ? 1.0 : 0.15}
+              roughness={0.7}
+              metalness={0.1}
+            />
+          )}
+          {(!isFloorBlock || block.selected) && (
+            <Edges linewidth={2} threshold={15} color={block.selected ? "#ffffff" : "#475569"} />
+          )}
         </mesh>
       )}
       {!hideBlockOverlays && block.logoURL ? (
@@ -251,7 +367,7 @@ function BlockMesh({
           isCircular={shape === "CYLINDER"}
         />
       ) : null}
-      {!hideBlockOverlays && block.label ? (
+      {!hideBlockOverlays && (!isFloorBlock || (interactive && block.selected)) && block.label ? (
         <Html center distanceFactor={18} position={[0, 0.7, 0]}>
           <div className="whitespace-nowrap rounded-md bg-black/90 border border-white/20 px-3 py-1.5 text-xs font-bold text-white shadow-xl pointer-events-none">
             {block.label}
@@ -300,10 +416,21 @@ function EscalatorGeometry({ selected }: { selected: boolean }) {
 
   return (
     <group position={[0, -0.05, 0]}>
+      {/* Main Escalator Body */}
       <mesh position={[0, -0.42, 0]} castShadow>
         <boxGeometry args={[0.95, 0.3, 3.2]} />
         <meshStandardMaterial color={bodyColor} roughness={0.65} metalness={0.25} />
         <Edges color={selected ? "#ffffff" : "#1e293b"} linewidth={2} />
+      </mesh>
+      
+      {/* Rounded ends (cylinders) for the escalator body */}
+      <mesh position={[0, -0.42, 1.6]} rotation={[0, 0, Math.PI / 2]} castShadow>
+        <cylinderGeometry args={[0.15, 0.15, 0.95, 16]} />
+        <meshStandardMaterial color={bodyColor} roughness={0.65} metalness={0.25} />
+      </mesh>
+      <mesh position={[0, -0.42, -1.6]} rotation={[0, 0, Math.PI / 2]} castShadow>
+        <cylinderGeometry args={[0.15, 0.15, 0.95, 16]} />
+        <meshStandardMaterial color={bodyColor} roughness={0.65} metalness={0.25} />
       </mesh>
       {Array.from({ length: 18 }).map((_, index) => {
         const progress = index / 17;
@@ -362,6 +489,44 @@ function PlantGeometry({ selected }: { selected: boolean }) {
         <mesh key={index} position={[x, 0.02 + (index % 2) * 0.08, 0]} rotation={[0, (index - 1) * 0.35, (index - 1) * 0.2]} castShadow>
           <sphereGeometry args={[0.18, 12, 8]} />
           <meshStandardMaterial color={selected ? "#86efac" : index === 1 ? "#22c55e" : "#16a34a"} roughness={0.8} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+function TreeGeometry({ selected }: { selected: boolean }) {
+  return (
+    <group>
+      {/* Trunk */}
+      <mesh position={[0, -0.1, 0]} castShadow rotation={[0, 0, 0.05]}>
+        <cylinderGeometry args={[0.06, 0.12, 0.8, 8]} />
+        <meshStandardMaterial color={selected ? "#fde68a" : "#78350f"} roughness={0.9} />
+      </mesh>
+      {/* Leaves */}
+      {Array.from({ length: 6 }).map((_, i) => (
+        <mesh key={i} position={[0, 0.3, 0]} rotation={[0.5, (i * Math.PI * 2) / 6, 0]} castShadow>
+          <sphereGeometry args={[0.25, 8, 5]} />
+          <meshStandardMaterial color={selected ? "#86efac" : "#15803d"} roughness={0.8} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+function AmazonPlantGeometry({ selected }: { selected: boolean }) {
+  return (
+    <group>
+      {/* Pot */}
+      <mesh position={[0, -0.4, 0]} castShadow>
+        <cylinderGeometry args={[0.25, 0.2, 0.2, 16]} />
+        <meshStandardMaterial color={selected ? "#bae6fd" : "#475569"} />
+      </mesh>
+      {/* Huge leaves */}
+      {Array.from({ length: 8 }).map((_, i) => (
+        <mesh key={i} position={[0, -0.15, 0]} rotation={[1.0, (i * Math.PI * 2) / 8, 0]} castShadow>
+          <cylinderGeometry args={[0, 0.15, 0.6, 4]} />
+          <meshStandardMaterial color={selected ? "#86efac" : "#166534"} roughness={0.6} />
         </mesh>
       ))}
     </group>

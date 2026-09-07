@@ -18,6 +18,28 @@ export default async function FloorsPage() {
         <ImageUploader fieldName="image2dURL" label="Upload 2D Blueprint (JPG/PNG)" />
         <ImageUploader fieldName="model3dURL" label="Upload 3D Model (GLTF/GLB/ETC)" />
         
+        <div className="md:col-span-4 grid grid-cols-3 gap-3">
+          <label className="flex flex-col gap-1 text-sm text-zinc-500">
+            Floor Color (Hex)
+            <input name="colorHex" type="color" defaultValue="#8B5FBF" className="h-11 w-full rounded-lg border border-zinc-200 bg-zinc-50 px-1 dark:border-zinc-800 dark:bg-zinc-950 cursor-pointer" />
+          </label>
+          <label className="flex flex-col gap-1 text-sm text-zinc-500">
+            Shape
+            <select name="shape" className="h-11 rounded-lg border border-zinc-200 bg-zinc-50 px-3 text-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100">
+              <option value="BOX">Rectangle (Default)</option>
+              <option value="CIRCLE">Circle</option>
+              <option value="HALF_CIRCLE">Half Circle</option>
+              <option value="TRIANGLE">Triangle</option>
+              <option value="HALF_SQUARE">Half Square</option>
+              <option value="POLYGON">Custom Polygon</option>
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-sm text-zinc-500">
+            Points Data (JSON)
+            <input name="pointsData" placeholder="e.g. [[-22, -22], [22, -22], ...]" className="h-11 rounded-lg border border-zinc-200 bg-zinc-50 px-3 text-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100" />
+          </label>
+        </div>
+        
         <label className="flex items-center gap-2 text-sm md:col-span-4">
           <input type="checkbox" name="isActive" defaultChecked /> Active
         </label>
