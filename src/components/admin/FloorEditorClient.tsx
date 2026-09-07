@@ -19,8 +19,15 @@ const SHAPES: { value: DraftBlock["shape"]; label: string; icon: string }[] = [
   { value: "BENCH", label: "Bench", icon: "▰" },
   { value: "STREET_LIGHT", label: "Street light", icon: "†" },
   { value: "COMPUTER", label: "Computer PC", icon: "▣" },
+  { value: "TREE", label: "Tree", icon: "🌲" },
+  { value: "AMAZON_PLANT", label: "Amazon Plant", icon: "🌿" },
   { value: "TRIANGLE", label: "Triangle", icon: "△" },
   { value: "POLYGON", label: "Polygon", icon: "⬡" },
+  { value: "FLOOR_SQUARE", label: "Floor: Square", icon: "⬛" },
+  { value: "FLOOR_CIRCLE", label: "Floor: Circle", icon: "⏺" },
+  { value: "FLOOR_HALF_CIRCLE", label: "Floor: Half Circle", icon: "🌗" },
+  { value: "FLOOR_TRIANGLE", label: "Floor: Triangle", icon: "🔺" },
+  { value: "FLOOR_HALF_SQUARE", label: "Floor: Half Sq.", icon: "◩" },
 ];
 
 export function FloorEditorClient({
@@ -29,12 +36,14 @@ export function FloorEditorClient({
   imageUrl,
   initial,
   tenants,
+  floorData,
 }: {
   floorId: string;
   floorName: string;
   imageUrl?: string | null;
   initial: { blocks: DraftBlock[]; nodes: DraftNode[]; edges: DraftEdge[] };
   tenants: { id: string; tenantName: string; logoURL: string | null; category: { colorHex: string } }[];
+  floorData?: { levelNumber: number; shape?: string; pointsData?: string | null; colorHex?: string | null };
 }) {
   const hydrate = useAdminStore((s) => s.hydrate);
   const tool = useAdminStore((s) => s.tool);
@@ -335,7 +344,7 @@ export function FloorEditorClient({
           <div className="absolute top-4 left-4 z-10 pointer-events-none">
             <h1 className="text-xl md:text-2xl font-black text-slate-800 dark:text-white drop-shadow-md tracking-tight">{floorName} editor</h1>
           </div>
-          <UnifiedFloorEditor imageUrl={showMap ? imageUrl : null} tenantColors={tenantColors} tenantLogos={tenantLogos} tenantLogosByName={tenantLogosByName} placementShape={placementShape} />
+          <UnifiedFloorEditor imageUrl={showMap ? imageUrl : null} tenantColors={tenantColors} tenantLogos={tenantLogos} tenantLogosByName={tenantLogosByName} placementShape={placementShape} floorData={floorData} />
         </div>
         {/* Floating Right Property Panel */}
         {(selectedBlock || selectedNode || multiSelected) && (
@@ -419,6 +428,29 @@ export function FloorEditorClient({
                           placeholder="https://example.com/logo.png"
                         />
                       </div>
+                      <div className="flex gap-2 mb-1.5">
+                        <div className="flex-1">
+                          <label className="text-[9px] text-slate-500 dark:text-slate-400 mb-0.5 uppercase tracking-wider font-semibold block">
+                            {selectedBlock.shape?.startsWith("FLOOR_") ? "Floor Piece Color" : "Block Color (Override)"}
+                          </label>
+                          <input
+                            type="color"
+                            className="w-full h-7 rounded px-1 border border-slate-300 dark:border-slate-700 focus:outline-none cursor-pointer"
+                            value={selectedBlock.colorHex ?? (selectedBlock.shape?.startsWith("FLOOR_") ? (floorData?.colorHex ?? "#8B5FBF") : "#94a3b8")}
+                            onChange={(e) => upsertBlock({ ...selectedBlock, colorHex: e.target.value })}
+                          />
+                        </div>
+                        <div className="flex-1 flex items-end">
+                          <button
+                            type="button"
+                            disabled={!selectedBlock.colorHex}
+                            onClick={() => upsertBlock({ ...selectedBlock, colorHex: null })}
+                            className="h-7 px-2 text-[10px] font-bold text-slate-600 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600 rounded disabled:opacity-40"
+                          >
+                            {selectedBlock.shape?.startsWith("FLOOR_") ? "Reset to Floor" : "Clear Color"}
+                          </button>
+                        </div>
+                      </div>
                       <div className="flex gap-2">
                         <div className="flex-1">
                           <label className="text-[9px] text-slate-500 dark:text-slate-400 mb-0.5 uppercase tracking-wider font-semibold block">Shape</label>
@@ -438,6 +470,8 @@ export function FloorEditorClient({
                             <option value="BENCH">Bench</option>
                             <option value="STREET_LIGHT">Street light</option>
                             <option value="COMPUTER">Computer PC</option>
+                            <option value="TREE">Tree</option>
+                            <option value="AMAZON_PLANT">Amazon Plant</option>
                             <option value="TRIANGLE">Triangle</option>
                           </select>
                         </div>

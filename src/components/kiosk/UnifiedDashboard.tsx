@@ -22,12 +22,14 @@ export function UnifiedDashboard({
   blocks,
   nodes,
   startNodeId,
+  floorsData,
 }: {
   tenants: KioskTenant[];
   categories: CategoryOption[];
   blocks: FloorBlockMesh[];
   nodes: GraphNode[];
   startNodeId: string | null;
+  floorsData?: { levelNumber: number; shape?: string; pointsData?: string | null; colorHex?: string | null }[];
 }) {
   const selectedTenantId = useKioskStore((s) => s.selectedTenantId);
   const setSelectedTenant = useKioskStore((s) => s.setSelectedTenant);
@@ -73,7 +75,8 @@ export function UnifiedDashboard({
               <PathfindingCanvas 
                 blocks={blocks} 
                 nodes={nodes} 
-                route={route} 
+                route={route}
+                floorsData={floorsData}
                 isPlayingAnimation={isPlayingAnimation} 
                 onAnimationComplete={() => {
                   setIsPlayingAnimation(false);
