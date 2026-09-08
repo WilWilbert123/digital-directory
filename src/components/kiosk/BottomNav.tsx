@@ -36,34 +36,38 @@ export function BottomNav() {
         {NAV_ITEMS.map(({ id, label, Icon }) => {
           const isActive = activeView === id;
           return (
-            <motion.button
+            <motion.div
               key={id}
               whileHover={{ y: -3, scale: 1.04 }}
               whileTap={{ scale: 0.94 }}
               transition={{ type: "spring", stiffness: 400, damping: 25 }}
-              onClick={() => {
-                if (id === "home") {
-                  goHome();
-                } else if (id === "search") {
-                  openMapWithSearch();
-                } else {
-                  setActiveView(id);
-                }
-              }}
-              className={cn(
-                "relative group flex items-center -skew-x-12 rounded-xl px-4 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-bold transition-all duration-300",
-                "backdrop-blur-md shadow-md shadow-slate-900/10",
-                isActive
-                  ? "bg-teal-400 text-slate-950 border border-teal-300 shadow-lg shadow-teal-500/25 font-black"
-                  : "bg-white/95 hover:bg-white text-slate-700 hover:text-slate-900 border border-slate-200/90 hover:border-slate-300 hover:shadow-lg"
-              )}
             >
-              {/* Counter-skewed content container so icon and label stay upright */}
-              <div className="flex items-center gap-2.5 skew-x-12">
-                <Icon className={cn("h-4 w-4 shrink-0 transition-transform group-hover:scale-110", isActive ? "text-slate-950" : "text-teal-600")} />
-                <span className="inline tracking-wide font-extrabold">{label}</span>
-              </div>
-            </motion.button>
+              <button
+                onClick={() => {
+                  if (id === "home") {
+                    goHome();
+                  } else if (id === "search") {
+                    openMapWithSearch();
+                  } else {
+                    setActiveView(id);
+                  }
+                }}
+                style={{ transform: "skewX(-12deg)" }}
+                className={cn(
+                  "relative group flex items-center rounded-xl px-4 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-bold transition-all duration-300",
+                  "backdrop-blur-md shadow-md shadow-slate-900/10",
+                  isActive
+                    ? "bg-teal-400 text-slate-950 border border-teal-300 shadow-lg shadow-teal-500/25 font-black"
+                    : "bg-white/95 hover:bg-white text-slate-700 hover:text-slate-900 border border-slate-200/90 hover:border-slate-300 hover:shadow-lg"
+                )}
+              >
+                {/* Counter-skewed content container so icon and text stay perfectly upright */}
+                <div style={{ transform: "skewX(12deg)" }} className="flex items-center gap-2.5">
+                  <Icon className={cn("h-4 w-4 shrink-0 transition-transform group-hover:scale-110", isActive ? "text-slate-950" : "text-teal-600")} />
+                  <span className="inline-block tracking-wide font-extrabold not-italic">{label}</span>
+                </div>
+              </button>
+            </motion.div>
           );
         })}
       </div>
