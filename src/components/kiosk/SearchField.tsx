@@ -1,8 +1,10 @@
 "use client";
 
+import { useRef } from "react";
 import { Search, X, Keyboard } from "lucide-react";
 import { useKioskStore } from "@/store/useKioskStore";
 import { motion, AnimatePresence } from "framer-motion";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 export function SearchField() {
   const query = useKioskStore((s) => s.query);
@@ -10,9 +12,46 @@ export function SearchField() {
   const setQuery = useKioskStore((s) => s.setQuery);
   const keyboardOpen = useKioskStore((s) => s.keyboardOpen);
   const setKeyboardOpen = useKioskStore((s) => s.setKeyboardOpen);
+  const isMobile = useIsMobile();
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const isExpanded = keyboardOpen || query.length > 0;
 
+  // ── MOBILE: Inline search bar at the top, uses native keyboard ───────────
+  if (isMobile) {
+    return (
+      <div className="w-full px-3 pb-2 shrink-0">
+        <div className="relative flex items-center h-11">
+          <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none z-10">
+            <Search className="h-4 w-4 text-kiosk-muted" />
+          </div>
+          <input
+            ref={inputRef}
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search stores..."
+            className="block h-full w-full rounded-2xl glass-panel bg-kiosk-surface/95 pl-10 pr-10 text-sm font-medium outline-none placeholder:text-kiosk-muted/60 focus:ring-2 focus:ring-white/20 transition-all shadow-lg backdrop-blur-xl border border-white/10"
+          />
+          <AnimatePresence>
+            {query && (
+              <motion.button
+                initial={{ opacity: 0, scale: 0.7 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.7 }}
+                onClick={clearQuery}
+                className="absolute inset-y-0 right-2 my-auto flex h-7 w-7 items-center justify-center rounded-full glass-button hover:bg-white/10 active:scale-95 transition-all text-kiosk-muted hover:text-foreground"
+              >
+                <X className="h-3.5 w-3.5" />
+              </motion.button>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
+    );
+  }
+
+  // ── DESKTOP / KIOSK: Floating icon → expands with custom keyboard ────────
   return (
     <div className="fixed top-16 sm:top-24 right-4 sm:right-8 z-[70] flex items-center justify-end h-14 sm:h-20">
       <AnimatePresence mode="wait">
@@ -43,7 +82,7 @@ export function SearchField() {
             <input
               type="text"
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => { setQuery(e.target.value); setKeyboardOpen(true); }}
               placeholder="Type to search..."
               className="absolute inset-0 block h-full w-full rounded-[3rem] glass-panel bg-kiosk-surface/95 py-3 sm:py-6 pl-12 sm:pl-20 pr-24 sm:pr-32 text-base sm:text-3xl font-medium outline-none placeholder:text-kiosk-muted/60 focus:ring-2 focus:ring-white/20 transition-all shadow-2xl backdrop-blur-xl border-white/10"
               autoFocus

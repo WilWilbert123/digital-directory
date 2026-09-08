@@ -45,7 +45,7 @@ export const useKioskStore = create<KioskState>((set) => ({
   route: null,
   idleSeconds: 0,
   keyboardOpen: false,
-  setQuery: (query) => set({ query, idleSeconds: 0, keyboardOpen: true }),
+  setQuery: (query) => set({ query, idleSeconds: 0 }),
   appendKey: (key) =>
     set((s) => ({
       query: (s.query + key).slice(0, 64),
