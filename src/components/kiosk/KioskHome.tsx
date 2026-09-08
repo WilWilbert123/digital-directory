@@ -69,9 +69,8 @@ export function KioskHome({ categories }: { categories: CategoryOption[] }) {
                 {/* Title — top left */}
                 <div>
                   <h2
-                    className={`font-black text-black leading-tight drop-shadow-sm ${
-                      isTall ? "text-base sm:text-3xl" : "text-sm sm:text-xl"
-                    }`}
+                    className={`font-black text-black leading-tight drop-shadow-sm ${isTall ? "text-base sm:text-3xl" : "text-sm sm:text-xl"
+                      }`}
                   >
                     {group.label}
                   </h2>
@@ -179,11 +178,15 @@ export function KioskHome({ categories }: { categories: CategoryOption[] }) {
                 }}
                 draggable={false}
               />
+
               <div
                 className="absolute inset-0 opacity-[0.07] pointer-events-none"
                 style={{ backgroundImage: "radial-gradient(circle, black 1px, transparent 1px)", backgroundSize: "20px 20px" }}
               />
             </motion.button>
+
+
+
           );
         })}
       </div>
