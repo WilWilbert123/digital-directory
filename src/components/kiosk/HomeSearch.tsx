@@ -6,11 +6,13 @@ import { OnScreenKeyboard } from "@/components/kiosk/OnScreenKeyboard";
 import { SearchField } from "@/components/kiosk/SearchField";
 import { CategorySelector, type CategoryOption } from "@/components/kiosk/CategorySelector";
 import { useKioskStore, type KioskTenant } from "@/store/useKioskStore";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 export function HomeSearch({ tenants, categories }: { tenants: KioskTenant[], categories: CategoryOption[] }) {
   const query = useKioskStore((s) => s.query);
   const keyboardOpen = useKioskStore((s) => s.keyboardOpen);
   const setSelectedTenant = useKioskStore((s) => s.setSelectedTenant);
+  const isMobile = useIsMobile();
 
   const categoryId = useKioskStore((s) => s.categoryId);
 
@@ -107,8 +109,9 @@ export function HomeSearch({ tenants, categories }: { tenants: KioskTenant[], ca
           )}
         </div>
       </motion.div>
+      {/* Custom on-screen keyboard — only shown on desktop/kiosk, never on mobile */}
       <AnimatePresence>
-        {keyboardOpen && (
+        {keyboardOpen && !isMobile && (
           <motion.div 
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
