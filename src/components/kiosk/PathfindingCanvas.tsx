@@ -348,18 +348,18 @@ export function PathfindingCanvas({
   }, [viewMode, route, activeLevel]);
 
   return (
-    <div className="absolute inset-0 w-full h-full overflow-hidden bg-black">
+    <div className="absolute inset-0 w-full h-full overflow-hidden bg-[#f8fafc]">
       
       {/* View Toggle UI */}
-      <div className="absolute top-24 right-6 z-10 flex overflow-hidden rounded-xl border border-slate-700 bg-black/60 shadow-2xl backdrop-blur-md">
+      <div className="absolute top-24 right-6 z-10 flex overflow-hidden rounded-xl border border-slate-200 bg-white/80 shadow-lg backdrop-blur-md">
         <button
-          className={`px-4 py-2 text-sm font-bold tracking-wide transition-colors ${viewMode === "IMMERSIVE" ? "bg-sky-600 text-white" : "text-slate-300 hover:bg-slate-800"}`}
+          className={`px-4 py-2 text-sm font-bold tracking-wide transition-colors ${viewMode === "IMMERSIVE" ? "bg-sky-600 text-white" : "text-slate-600 hover:bg-slate-100"}`}
           onClick={() => setViewMode("IMMERSIVE")}
         >
           3D IMMERSIVE
         </button>
         <button
-          className={`px-4 py-2 text-sm font-bold tracking-wide transition-colors ${viewMode === "TOP" ? "bg-emerald-600 text-white" : "text-slate-300 hover:bg-slate-800"}`}
+          className={`px-4 py-2 text-sm font-bold tracking-wide transition-colors ${viewMode === "TOP" ? "bg-emerald-600 text-white" : "text-slate-600 hover:bg-slate-100"}`}
           onClick={() => setViewMode("TOP")}
         >
           TOP VIEW
@@ -369,17 +369,19 @@ export function PathfindingCanvas({
       {/* Tour Guide Floor Indicator */}
       {isPlayingAnimation && (
         <div className="absolute top-8 left-1/2 -translate-x-1/2 z-20 flex items-center justify-center pointer-events-none animate-in slide-in-from-top-4 fade-in duration-500">
-          <span className="text-white/90 font-extrabold tracking-widest text-2xl uppercase drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)]">
-            Floor {activeLevel}
-          </span>
+          <div className="bg-white/90 border border-slate-200/80 px-6 py-2 rounded-full shadow-lg backdrop-blur-md">
+            <span className="text-slate-900 font-extrabold tracking-widest text-2xl uppercase">
+              Floor {activeLevel}
+            </span>
+          </div>
         </div>
       )}
 
       <Canvas shadows gl={{ antialias: true }}>
-        <color attach="background" args={["#020617"]} />
+        <color attach="background" args={["#f8fafc"]} />
         <PerspectiveCamera makeDefault position={[0, 40, 45]} fov={45} />
-        <ambientLight intensity={0.45} />
-        <directionalLight position={[12, 20, 8]} intensity={1.4} castShadow />
+        <ambientLight intensity={0.7} />
+        <directionalLight position={[12, 20, 8]} intensity={1.5} castShadow />
         <Suspense fallback={<Html center>Loading 3D map…</Html>}>
           <FloorModel 
             blocks={blocks} 

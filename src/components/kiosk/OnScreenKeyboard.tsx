@@ -37,7 +37,7 @@ export function OnScreenKeyboard() {
         <button
           type="button"
           onClick={clearQuery}
-          className="h-10 sm:h-12 rounded-xl glass-button px-4 text-xs font-bold uppercase tracking-wider text-white/60 hover:text-foreground active:scale-95 transition-all"
+          className="h-10 sm:h-12 rounded-xl bg-white text-black px-4.5 text-xs font-black uppercase tracking-wider hover:bg-white/90 active:scale-95 transition-all shadow-md"
         >
           Clear
         </button>
