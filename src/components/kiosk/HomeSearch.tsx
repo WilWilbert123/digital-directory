@@ -32,15 +32,15 @@ export function HomeSearch({ tenants, categories }: { tenants: KioskTenant[], ca
   }, [query, tenants, categoryId]);
 
   return (
-    <div className="w-full max-w-7xl mx-auto h-full pt-8 pb-8 flex flex-col relative">
+    <div className="w-full max-w-7xl mx-auto h-full pt-4 sm:pt-8 pb-4 sm:pb-8 flex flex-col relative">
       <SearchField />
       
-      <div className="px-6 shrink-0 mb-4">
+      <div className="px-3 sm:px-6 shrink-0 mb-2 sm:mb-4">
         <CategorySelector categories={categories} />
       </div>
       
       <motion.div layout className="flex-1 min-h-0 w-full">
-        <div className="h-full overflow-y-auto no-scrollbar px-6 pb-24 grid gap-8 grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 content-start">
+        <div className="h-full overflow-y-auto no-scrollbar px-3 sm:px-6 pb-16 sm:pb-24 grid gap-3 sm:gap-8 grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 content-start">
           <AnimatePresence mode="popLayout">
           {matches.map((t) => (
             <motion.div
@@ -59,7 +59,7 @@ export function HomeSearch({ tenants, categories }: { tenants: KioskTenant[], ca
               >
                 {/* Massive Floating Logo */}
                 {t.logoURL ? (
-                  <div className="h-32 w-32 rounded-full bg-white p-5 shadow-xl flex items-center justify-center shrink-0 group-hover:scale-110 group-active:scale-95 transition-transform duration-300 mb-4 ring-0 group-hover:ring-4 ring-white/10">
+                  <div className="h-16 w-16 sm:h-32 sm:w-32 rounded-full bg-white p-2 sm:p-5 shadow-xl flex items-center justify-center shrink-0 group-hover:scale-110 group-active:scale-95 transition-transform duration-300 mb-2 sm:mb-4 ring-0 group-hover:ring-4 ring-white/10">
                     <img 
                       src={t.logoURL} 
                       alt={`${t.tenantName} logo`}
@@ -68,22 +68,22 @@ export function HomeSearch({ tenants, categories }: { tenants: KioskTenant[], ca
                   </div>
                 ) : (
                   <div
-                    className="h-32 w-32 rounded-full flex items-center justify-center shrink-0 shadow-xl group-hover:scale-110 group-active:scale-95 transition-transform duration-300 mb-4 ring-0 group-hover:ring-4 ring-white/10"
+                    className="h-16 w-16 sm:h-32 sm:w-32 rounded-full flex items-center justify-center shrink-0 shadow-xl group-hover:scale-110 group-active:scale-95 transition-transform duration-300 mb-2 sm:mb-4 ring-0 group-hover:ring-4 ring-white/10"
                     style={{ 
                       backgroundColor: t.category.colorHex,
                       opacity: 0.95
                     }}
                   >
-                    <span className="text-4xl font-extrabold text-white tracking-wider">{t.tenantCode.slice(0, 3)}</span>
+                    <span className="text-lg sm:text-4xl font-extrabold text-white tracking-wider">{t.tenantCode.slice(0, 3)}</span>
                   </div>
                 )}
 
                 {/* Minimalist Typography */}
-                <div className="text-center px-2">
-                  <h3 className="text-xl font-bold text-foreground group-hover:text-white transition-colors leading-tight">
+                <div className="text-center px-1 sm:px-2">
+                  <h3 className="text-[10px] sm:text-xl font-bold text-foreground group-hover:text-white transition-colors leading-tight line-clamp-2">
                     {t.tenantName}
                   </h3>
-                  <p className="text-xs font-medium text-kiosk-muted mt-1 opacity-60">
+                  <p className="hidden sm:block text-xs font-medium text-kiosk-muted mt-1 opacity-60">
                     {t.floor.floorName}
                   </p>
                 </div>
