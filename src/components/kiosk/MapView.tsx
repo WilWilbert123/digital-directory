@@ -168,7 +168,7 @@ export function MapView({
   const kioskLabel = `${originFloor}F, ${APP_NAME}`;
 
   return (
-    <div className="relative h-full w-full overflow-hidden bg-[#0a0a0a]">
+    <div className="relative h-full w-full overflow-hidden bg-[#f8fafc]">
 
       {/* ── Map Canvas ──────────────────────────────────────────────────── */}
       <PathfindingCanvas

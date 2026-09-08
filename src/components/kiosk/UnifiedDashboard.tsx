@@ -116,7 +116,7 @@ export function UnifiedDashboard({
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 1.05 }}
             transition={{ duration: 0.3, type: "spring", bounce: 0 }}
-            className="absolute inset-0 z-30 bg-[#0a0a0a]"
+            className="absolute inset-0 z-30 bg-[#f8fafc]"
           >
             <div className="absolute inset-0">
               <PathfindingCanvas
