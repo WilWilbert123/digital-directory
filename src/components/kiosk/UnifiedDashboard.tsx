@@ -126,8 +126,7 @@ export function UnifiedDashboard({
                 floorsData={floorsData}
                 isPlayingAnimation={isPlayingAnimation}
                 onAnimationComplete={() => {
-                  setIsPlaying(false);
-                  setTimeout(() => setIsPlaying(true), 1500);
+                  // Animation complete - TourGuide stops at destination floor without looping back to start
                 }}
               />
             </div>
@@ -158,7 +157,14 @@ export function UnifiedDashboard({
               {/* Play/Stop animation */}
               {route?.found && (
                 <button
-                  onClick={() => setIsPlaying(!isPlayingAnimation)}
+                  onClick={() => {
+                    if (isPlayingAnimation) {
+                      setIsPlaying(false);
+                    } else {
+                      setIsPlaying(false);
+                      setTimeout(() => setIsPlaying(true), 20);
+                    }
+                  }}
                   className={`pointer-events-auto flex w-fit items-center gap-3 rounded-full border px-4 py-2.5 sm:px-5 sm:py-3 backdrop-blur-xl shadow-2xl transition-all text-sm sm:text-base ${
                     isPlayingAnimation
                       ? "bg-rose-500/20 border-rose-500/50 text-rose-100 hover:bg-rose-500/30"
@@ -166,7 +172,7 @@ export function UnifiedDashboard({
                   }`}
                 >
                   {isPlayingAnimation ? (
-                    <><Square className="h-4 w-4 fill-current" /><span className="font-bold">Stop</span></>
+                    <><Square className="h-4 w-4 fill-current" /><span className="font-bold">Stop Route</span></>
                   ) : (
                     <><Play className="h-4 w-4 fill-current" /><span className="font-bold">Play Route</span></>
                   )}

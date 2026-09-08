@@ -3,124 +3,215 @@
 import { Canvas } from "@react-three/fiber";
 import { Environment, Html, CameraControls, PerspectiveCamera, Sphere } from "@react-three/drei";
 import { Suspense, useMemo, useRef, useState, useEffect } from "react";
-import { Plus, Minus } from "lucide-react";
 import { DirectionLine } from "@/components/3d/DirectionLine";
 import { FloorModel, type FloorBlockMesh } from "@/components/3d/FloorModel";
 import { HumanAvatar } from "@/components/3d/HumanAvatar";
-import type { GraphNode, PathResult } from "@/lib/pathfinding";
+import type { GraphNode, PathNodeType, PathResult } from "@/lib/pathfinding";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
+import { DoorOpen } from "lucide-react";
+
+const VERTICAL_TYPES: PathNodeType[] = ["ESCALATOR", "ELEVATOR", "STAIRS"];
 
 function TourGuide({
   route,
   isPlayingAnimation,
   onLevelChange,
   onComplete,
+  onProceed,
+  proceedSignal,
   cameraControlsRef,
 }: {
   route: PathResult | null;
   isPlayingAnimation: boolean;
   onLevelChange: (level: number) => void;
   onComplete: () => void;
+  onProceed: () => void; // called when user taps Proceed in the popup
+  proceedSignal: number;
   cameraControlsRef: React.MutableRefObject<any>;
 }) {
   const groupRef = useRef<THREE.Group>(null);
   const progressRef = useRef(0);
   const lastLevelRef = useRef<number | null>(null);
+  const pausedRef = useRef(false);
+  const visitedPausedNodesRef = useRef(new Set<number>());
+  const lastProceedSignalRef = useRef(proceedSignal);
+  // React state so Html popup re-renders when paused node changes
+  const [pausedAtNode, setPausedAtNode] = useState<GraphNode | null>(null);
 
   const totalDistance = useMemo(() => {
     if (!route) return 0;
     let dist = 0;
     for (let i = 0; i < route.polyline.length - 1; i++) {
        const p1 = route.polyline[i];
-       const p2 = route.polyline[i+1];
-       dist += Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2) + Math.pow(p2.z - p1.z, 2));
+       const p2 = route.polyline[i + 1];
+       dist += Math.hypot(p2.x - p1.x, p2.y - p1.y, p2.z - p1.z);
     }
     return dist;
   }, [route]);
 
+  const [isFinished, setIsFinished] = useState(false);
+
   useEffect(() => {
-    if (!isPlayingAnimation) {
-      progressRef.current = 0;
-      lastLevelRef.current = null;
+    progressRef.current = 0;
+    lastLevelRef.current = null;
+    pausedRef.current = false;
+    visitedPausedNodesRef.current.clear();
+    setPausedAtNode(null);
+    setIsFinished(false);
+  }, [isPlayingAnimation, route]);
+
+  // When proceedSignal bumps → resume walking past current escalator node
+  useEffect(() => {
+    if (proceedSignal !== lastProceedSignalRef.current) {
+      lastProceedSignalRef.current = proceedSignal;
+      if (pausedRef.current) {
+        pausedRef.current = false;
+        setPausedAtNode(null);
+        progressRef.current += 1.0;
+      }
     }
-  }, [isPlayingAnimation]);
+  }, [proceedSignal]);
 
   useFrame((state, delta) => {
     if (!isPlayingAnimation || !route?.found || !groupRef.current) return;
+    if (pausedRef.current) return;
 
-    let ridingEscalator = false;
-    let probeDistance = 0;
-    for (let i = 0; i < route.polyline.length - 1; i++) {
-      const p1 = route.polyline[i];
-      const p2 = route.polyline[i + 1];
-      const segmentDistance = Math.hypot(p2.x - p1.x, p2.y - p1.y, p2.z - p1.z);
-      if (progressRef.current <= probeDistance + segmentDistance) {
-        ridingEscalator = Math.abs(p2.y - p1.y) > 0.1;
-        break;
+    if (!isFinished) {
+      const speed = 4.5;
+      progressRef.current += speed * delta;
+
+      if (totalDistance > 0 && progressRef.current >= totalDistance) {
+        progressRef.current = totalDistance;
+        setIsFinished(true);
+        onComplete();
       }
-      probeDistance += segmentDistance;
     }
 
-    const speed = 4.5;
-    progressRef.current += speed * delta;
-    
+    let ridingEscalator = false;
     let currentDist = 0;
     let point = new THREE.Vector3();
     let lookTarget = new THREE.Vector3();
     let found = false;
+    let currentSegmentIndex = -1;
 
     for (let i = 0; i < route.polyline.length - 1; i++) {
-       const p1 = new THREE.Vector3(route.polyline[i].x, route.polyline[i].y, route.polyline[i].z);
-       const p2 = new THREE.Vector3(route.polyline[i+1].x, route.polyline[i+1].y, route.polyline[i+1].z);
-       const segDist = p1.distanceTo(p2);
-       
-       if (progressRef.current <= currentDist + segDist) {
-          const t = (progressRef.current - currentDist) / segDist;
-         ridingEscalator = Math.abs(p2.y - p1.y) > 0.1;
-          // Keep the ride smooth, but ease into and out of the escalator incline.
-          const travelT = ridingEscalator ? t * t * (3 - 2 * t) : t;
-          const nextT = ridingEscalator ? Math.min(1, travelT + 0.08) : 1;
-         point.lerpVectors(p1, p2, travelT);
-         lookTarget.lerpVectors(p1, p2, nextT);
-          
-          found = true;
-          break;
-       }
-       currentDist += segDist;
+      const p1 = new THREE.Vector3(route.polyline[i].x, route.polyline[i].y, route.polyline[i].z);
+      const p2 = new THREE.Vector3(route.polyline[i + 1].x, route.polyline[i + 1].y, route.polyline[i + 1].z);
+      const segDist = p1.distanceTo(p2);
+      if (progressRef.current <= currentDist + segDist) {
+        const t = (progressRef.current - currentDist) / segDist;
+        ridingEscalator = Math.abs(p2.y - p1.y) > 0.1;
+        const travelT = ridingEscalator ? t * t * (3 - 2 * t) : t;
+        const nextT = ridingEscalator ? Math.min(1, travelT + 0.08) : 1;
+        point.lerpVectors(p1, p2, travelT);
+        lookTarget.lerpVectors(p1, p2, nextT);
+        currentSegmentIndex = i;
+        found = true;
+        break;
+      }
+      currentDist += segDist;
     }
 
     if (!found) {
-       const lastP = route.polyline[route.polyline.length - 1];
-       point.set(lastP.x, lastP.y, lastP.z);
-       lookTarget.copy(point);
-       if (progressRef.current > totalDistance) {
-         onComplete();
-         progressRef.current = 0;
-       }
+      const lastP = route.polyline[route.polyline.length - 1];
+      point.set(lastP.x, lastP.y, lastP.z);
+      if (route.polyline.length >= 2) {
+        const prevP = route.polyline[route.polyline.length - 2];
+        const dir = new THREE.Vector3(lastP.x - prevP.x, 0, lastP.z - prevP.z).normalize();
+        lookTarget.set(lastP.x + dir.x, lastP.y, lastP.z + dir.z);
+      } else {
+        lookTarget.copy(point);
+      }
     }
 
     groupRef.current.position.copy(point);
-    if (found && lookTarget.distanceTo(point) > 0.01) {
-      // Follow the incline while riding between floors; walk level after arriving.
-      groupRef.current.lookAt(ridingEscalator ? lookTarget : new THREE.Vector3(lookTarget.x, point.y, lookTarget.z));
+    if (lookTarget.distanceTo(point) > 0.01) {
+      groupRef.current.lookAt(
+        ridingEscalator ? lookTarget : new THREE.Vector3(lookTarget.x, point.y, lookTarget.z)
+      );
     }
-    
-    // Determine the current floor based on the START node of the current segment.
-    // This prevents the floor from switching early if the escalator segment is drawn over a long distance.
+
     const currentLevel = Math.round(point.y / 8) + 1;
     if (currentLevel !== lastLevelRef.current) {
-       lastLevelRef.current = currentLevel;
-       onLevelChange(currentLevel);
+      lastLevelRef.current = currentLevel;
+      onLevelChange(currentLevel);
+    }
+
+    // ── Pause when reaching a vertical connector that leads to another floor ──
+    if (!isFinished && found && currentSegmentIndex >= 0) {
+      const nextNodeIndex = currentSegmentIndex + 1;
+      if (nextNodeIndex < route.nodes.length && !visitedPausedNodesRef.current.has(nextNodeIndex)) {
+        const nextNode = route.nodes[nextNodeIndex];
+        const afterNextNode = route.nodes[nextNodeIndex + 1];
+        if (
+          nextNode &&
+          VERTICAL_TYPES.includes(nextNode.type) &&
+          afterNextNode &&
+          Math.round(nextNode.position.y / 8) !== Math.round(afterNextNode.position.y / 8)
+        ) {
+          const nodePos = new THREE.Vector3(nextNode.position.x, nextNode.position.y, nextNode.position.z);
+          if (point.distanceTo(nodePos) < 1.0) {
+            pausedRef.current = true;
+            visitedPausedNodesRef.current.add(nextNodeIndex);
+            setPausedAtNode(nextNode);
+          }
+        }
+      }
     }
   });
 
   if (!isPlayingAnimation) return null;
 
+  // Find which floor comes after the paused vertical node
+  const nextFloor = pausedAtNode && route
+    ? (() => {
+        const idx = route.nodes.findIndex(n => n.id === pausedAtNode.id);
+        const after = idx >= 0 ? route.nodes[idx + 1] : null;
+        return after ? Math.round(after.position.y / 8) + 1 : null;
+      })()
+    : null;
+
+  // suppress unused-var — nextFloor kept for future tooltip use
+  void nextFloor;
+
   return (
     <group ref={groupRef}>
-      <HumanAvatar position={[0, 0, 0]} color="#f43f5e" isWalking={true} />
+      <HumanAvatar position={[0, 0, 0]} color="#f43f5e" isWalking={!isFinished} />
       <pointLight color="#f43f5e" intensity={1.5} distance={12} position={[0, 3, 0]} />
+
+      {/* ── One-line white chip near the node floor level ── */}
+      {pausedAtNode && (
+        <Html
+          position={[0, 0.4, 0]}
+          center
+          zIndexRange={[100, 200]}
+          style={{ pointerEvents: "auto", userSelect: "none" }}
+        >
+          <button
+            onClick={onProceed}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              background: "#ffffff",
+              border: "1px solid #e5e7eb",
+              borderRadius: "999px",
+              padding: "6px 14px 6px 10px",
+              cursor: "pointer",
+              boxShadow: "0 4px 14px rgba(0,0,0,0.25)",
+              whiteSpace: "nowrap",
+            }}
+            onMouseEnter={e => (e.currentTarget.style.background = "#f9fafb")}
+            onMouseLeave={e => (e.currentTarget.style.background = "#ffffff")}
+          >
+            <DoorOpen size={16} color="#111827" />
+            <span style={{ fontSize: "12px", fontWeight: 800, color: "#111827", letterSpacing: "0.01em" }}>
+              Proceed
+            </span>
+          </button>
+        </Html>
+      )}
     </group>
   );
 }
@@ -133,6 +224,10 @@ export function PathfindingCanvas({
   floorsData,
   isPlayingAnimation = false,
   onAnimationComplete,
+  onProceed,
+  proceedSignal = 0,
+  selectedFloor,
+  onLevelChange,
 }: {
   blocks: FloorBlockMesh[];
   nodes: GraphNode[];
@@ -141,18 +236,28 @@ export function PathfindingCanvas({
   floorsData?: { levelNumber: number; shape?: string; pointsData?: string | null; colorHex?: string | null }[];
   isPlayingAnimation?: boolean;
   onAnimationComplete?: () => void;
+  onProceed?: () => void;
+  proceedSignal?: number;
+  selectedFloor?: number;
+  onLevelChange?: (level: number) => void;
 }) {
   const end = route?.nodes.at(-1);
 
-  const [activeLevel, setActiveLevel] = useState<number>(1);
+  const [activeLevel, setActiveLevel] = useState<number>(selectedFloor ?? 1);
+
+  // Sync with selectedFloor prop when changed externally
+  useEffect(() => {
+    if (selectedFloor !== undefined && selectedFloor !== activeLevel) {
+      setActiveLevel(selectedFloor);
+    }
+  }, [selectedFloor]);
 
   // Reset to the start node's floor when a new route is searched
   useEffect(() => {
     if (route?.found && route.nodes.length > 0) {
       const startLevel = Math.round(route.nodes[0].position.y / 8) + 1;
       setActiveLevel(startLevel);
-    } else {
-      setActiveLevel(1);
+      onLevelChange?.(startLevel);
     }
   }, [route]);
 
@@ -191,6 +296,23 @@ export function PathfindingCanvas({
   const [viewMode, setViewMode] = useState<"IMMERSIVE" | "TOP">("IMMERSIVE");
 
   const lastViewConfig = useRef({ viewMode: "IMMERSIVE", hasRoute: false });
+
+  // Listen for custom zoom events dispatched from navigation bar
+  useEffect(() => {
+    const handleZoomIn = () => cameraControlsRef.current?.dolly(15, true);
+    const handleZoomOut = () => cameraControlsRef.current?.dolly(-15, true);
+    const handleResetView = () => cameraControlsRef.current?.reset(true);
+
+    window.addEventListener("kiosk-map-zoom-in", handleZoomIn);
+    window.addEventListener("kiosk-map-zoom-out", handleZoomOut);
+    window.addEventListener("kiosk-map-reset", handleResetView);
+
+    return () => {
+      window.removeEventListener("kiosk-map-zoom-in", handleZoomIn);
+      window.removeEventListener("kiosk-map-zoom-out", handleZoomOut);
+      window.removeEventListener("kiosk-map-reset", handleResetView);
+    };
+  }, []);
 
   useEffect(() => {
     if (!cameraControlsRef.current) return;
@@ -241,22 +363,6 @@ export function PathfindingCanvas({
           onClick={() => setViewMode("TOP")}
         >
           TOP VIEW
-        </button>
-      </div>
-
-      {/* Zoom Controls */}
-      <div className="absolute top-40 right-6 z-10 flex flex-col overflow-hidden rounded-xl border border-slate-700 bg-black/60 shadow-2xl backdrop-blur-md">
-        <button
-          className="p-3 text-slate-300 hover:bg-slate-800 hover:text-white transition-colors border-b border-slate-700"
-          onClick={() => cameraControlsRef.current?.dolly(15, true)}
-        >
-          <Plus size={20} />
-        </button>
-        <button
-          className="p-3 text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
-          onClick={() => cameraControlsRef.current?.dolly(-15, true)}
-        >
-          <Minus size={20} />
         </button>
       </div>
 
@@ -319,6 +425,8 @@ export function PathfindingCanvas({
             isPlayingAnimation={isPlayingAnimation} 
             onLevelChange={setActiveLevel}
             onComplete={() => onAnimationComplete?.()}
+            onProceed={() => onProceed?.()}
+            proceedSignal={proceedSignal}
             cameraControlsRef={cameraControlsRef}
           />
           

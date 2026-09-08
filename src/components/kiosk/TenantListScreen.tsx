@@ -23,10 +23,10 @@ export function TenantListScreen({
   tenants: KioskTenant[];
   categories: CategoryOption[];
 }) {
-  const selectedSubcategoryId = useKioskStore((s) => s.selectedSubcategoryId);
-  const selectedCategoryGroup = useKioskStore((s) => s.selectedCategoryGroup);
-  const selectSubcategory     = useKioskStore((s) => s.selectSubcategory);
-  const setSelectedTenant     = useKioskStore((s) => s.setSelectedTenant);
+  const selectedSubcategoryId   = useKioskStore((s) => s.selectedSubcategoryId);
+  const selectedCategoryGroup   = useKioskStore((s) => s.selectedCategoryGroup);
+  const selectSubcategory       = useKioskStore((s) => s.selectSubcategory);
+  const openMapWithDestination  = useKioskStore((s) => s.openMapWithDestination);
 
   const [search, setSearch] = useState("");
   const [craving, setCraving] = useState("All");
@@ -162,51 +162,54 @@ export function TenantListScreen({
                   />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-3">
                   {floorTenants.map((t, i) => (
-                    <motion.button
+                    <motion.div
                       key={t.id}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0, transition: { delay: i * 0.04 } }}
-                      whileTap={{ scale: 0.97 }}
-                      onClick={() => setSelectedTenant(t.id)}
-                      className="flex items-center gap-3 rounded-xl border border-white/10 p-3 text-left hover:border-white/25 hover:bg-white/5 transition-all"
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0, transition: { delay: i * 0.02 } }}
+                      className="group flex items-center justify-between gap-2.5 rounded-xl border border-slate-200/90 bg-white hover:border-teal-400 p-2.5 shadow-sm hover:shadow-md transition-all"
                     >
-                      {/* Logo / Avatar */}
-                      <div
-                        className="h-11 w-11 rounded-full shrink-0 flex items-center justify-center overflow-hidden shadow-md"
-                        style={{ backgroundColor: `${t.category.colorHex}25` }}
+                      {/* Store Avatar & Name */}
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        <div
+                          className="h-9 w-9 rounded-lg shrink-0 flex items-center justify-center overflow-hidden border border-slate-100 bg-slate-50 shadow-inner"
+                        >
+                          {t.logoURL ? (
+                            <img
+                              src={t.logoURL}
+                              alt={t.tenantName}
+                              className="h-full w-full object-contain p-1"
+                            />
+                          ) : (
+                            <span
+                              className="text-[10px] font-black tracking-wider"
+                              style={{ color: t.category.colorHex }}
+                            >
+                              {t.tenantCode.slice(0, 3)}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <h3 className="text-xs font-bold text-slate-900 leading-tight truncate group-hover:text-teal-600 transition-colors">
+                            {t.tenantName}
+                          </h3>
+                          <p className="text-[9px] text-slate-400 font-semibold mt-0.5 truncate uppercase tracking-wider">
+                            {t.category.categoryName} · {t.floor.floorName}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* DIRECTIONS button */}
+                      <button
+                        onClick={() => openMapWithDestination(t)}
+                        className="shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-teal-400 hover:bg-teal-300 text-black text-[10px] font-black uppercase tracking-wider shadow-sm active:scale-95 transition-all"
                       >
-                        {t.logoURL ? (
-                          <img
-                            src={t.logoURL}
-                            alt={t.tenantName}
-                            className="h-full w-full object-contain p-1"
-                          />
-                        ) : (
-                          <span
-                            className="text-xs font-black"
-                            style={{ color: t.category.colorHex }}
-                          >
-                            {t.tenantCode.slice(0, 3)}
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-foreground leading-tight truncate">
-                          {t.tenantName}
-                        </p>
-                        <p className="text-[10px] opacity-40 uppercase tracking-wider mt-0.5">
-                          {t.tenantCode}
-                        </p>
-                      </div>
-
-                      {/* Get Directions cue */}
-                      <span className="shrink-0 text-[10px] font-bold text-teal-400 opacity-70">
-                        DIRECTIONS →
-                      </span>
-                    </motion.button>
+                        <span>Directions</span>
+                        <span className="text-[10px]">→</span>
+                      </button>
+                    </motion.div>
                   ))}
                 </div>
               </div>

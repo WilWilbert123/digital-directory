@@ -368,7 +368,7 @@ function BlockMesh({
         />
       ) : null}
       {!hideBlockOverlays && (!isFloorBlock || (interactive && block.selected)) && block.label ? (
-        <Html center distanceFactor={18} position={[0, 0.7, 0]}>
+        <Html center distanceFactor={18} position={[0, 0.7, 0]} zIndexRange={[0, 10]}>
           <div className="whitespace-nowrap rounded-md bg-black/90 border border-white/20 px-3 py-1.5 text-xs font-bold text-white shadow-xl pointer-events-none">
             {block.label}
           </div>
@@ -398,7 +398,7 @@ function LogoSticker({
         <planeGeometry args={isCircular ? [0.42, 0.42] : [0.48, 0.28]} />
         <meshStandardMaterial color="#ffffff" roughness={0.7} metalness={0.05} />
       </mesh>
-      <Html center transform distanceFactor={30} position={[0, 0, 0.004]} style={{ pointerEvents: "none" }}>
+      <Html center transform distanceFactor={30} position={[0, 0, 0.004]} zIndexRange={[0, 10]} style={{ pointerEvents: "none" }}>
         <div className={`flex items-center justify-center overflow-hidden bg-white p-0.5 ${isCircular ? "h-7 w-7 rounded-full" : "h-6 w-10 rounded-sm"}`}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={url} alt="" onError={() => setFailed(true)} className="max-h-full max-w-full object-contain" />
