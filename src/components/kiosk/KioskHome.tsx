@@ -20,22 +20,20 @@ export function KioskHome({ categories }: { categories: CategoryOption[] }) {
   const selectCategoryGroup = useKioskStore((s) => s.selectCategoryGroup);
 
   return (
-    <div className="h-full w-full p-3 sm:p-6 pb-20 sm:pb-24 overflow-hidden">
+    <div className="h-full w-full p-2 sm:p-6 pb-[72px] sm:pb-24 overflow-y-auto no-scrollbar">
       {/* 
-        Bento grid: 4 columns
-        - col 1 (food) :   row 1-2
-        - col 2 (fashion): row 1-2
-        - col 3 (electronics): row 1 | col 4 (services): row 1
-        - col 3-4 (essentials): row 2
+        Mobile: 2-column grid (food/fashion tall on left, others on right)
+        Desktop: 4-column bento grid
       */}
-      <div
-        className="h-full grid gap-3 sm:gap-4"
+      {/* Mobile grid */}
+      <div className="sm:hidden h-full grid gap-2"
         style={{
-          gridTemplateColumns: "1fr 1fr 1fr 1fr",
-          gridTemplateRows: "1fr 1fr",
+          gridTemplateColumns: "1fr 1fr",
+          gridTemplateRows: "auto auto auto",
           gridTemplateAreas: `
-            "food fashion electronics services"
-            "food fashion essentials  essentials"
+            "food fashion"
+            "electronics services"
+            "essentials essentials"
           `,
         }}
       >
@@ -63,23 +61,23 @@ export function KioskHome({ categories }: { categories: CategoryOption[] }) {
               whileHover={{ scale: 1.02, filter: "brightness(1.08)" }}
               whileTap={{ scale: 0.97 }}
               onClick={() => selectCategoryGroup(group.id)}
-              className="relative overflow-hidden rounded-2xl sm:rounded-3xl text-left shadow-xl focus:outline-none"
+              className="relative overflow-hidden rounded-2xl sm:rounded-3xl text-left shadow-xl focus:outline-none min-h-[90px]"
               style={{ gridArea: areaMap[group.id], backgroundColor: color }}
             >
               {/* Card content */}
-              <div className="absolute inset-0 flex flex-col justify-between p-4 sm:p-6 z-10">
+              <div className="absolute inset-0 flex flex-col justify-between p-3 sm:p-6 z-10">
                 {/* Title — top left */}
                 <div>
                   <h2
                     className={`font-black text-black leading-tight drop-shadow-sm ${
-                      isTall ? "text-xl sm:text-3xl" : "text-sm sm:text-xl"
+                      isTall ? "text-base sm:text-3xl" : "text-sm sm:text-xl"
                     }`}
                   >
                     {group.label}
                   </h2>
-                  {/* Tenant count badge */}
+                  {/* Tenant count badge — hidden on mobile to save space */}
                   {dbCats.length > 0 && (
-                    <span className="mt-1 inline-block rounded-full bg-black/10 px-2 py-0.5 text-[10px] sm:text-xs font-semibold text-black/60">
+                    <span className="hidden sm:inline-block mt-1 rounded-full bg-black/10 px-2 py-0.5 text-[10px] sm:text-xs font-semibold text-black/60">
                       {dbCats.length} {dbCats.length === 1 ? "subcategory" : "subcategories"}
                     </span>
                   )}
@@ -115,6 +113,75 @@ export function KioskHome({ categories }: { categories: CategoryOption[] }) {
                   backgroundImage: "radial-gradient(circle, black 1px, transparent 1px)",
                   backgroundSize: "20px 20px",
                 }}
+              />
+            </motion.button>
+          );
+        })}
+      </div>
+
+      {/* Desktop bento grid — hidden on mobile */}
+      <div className="hidden sm:grid h-full gap-4"
+        style={{
+          gridTemplateColumns: "1fr 1fr 1fr 1fr",
+          gridTemplateRows: "1fr 1fr",
+          gridTemplateAreas: `
+            "food fashion electronics services"
+            "food fashion essentials  essentials"
+          `,
+        }}
+      >
+        {CATEGORY_GROUPS.map((group, i) => {
+          const isTall = i < TALL_COUNT;
+          const dbCats = getCategoriesForGroup(group.id, categories);
+          const color = dbCats[0]?.colorHex ?? group.defaultColor;
+          const areaMap: Record<string, string> = {
+            food: "food", fashion: "fashion", electronics: "electronics",
+            services: "services", essentials: "essentials",
+          };
+          return (
+            <motion.button
+              key={group.id + "-desktop"}
+              custom={i}
+              variants={cardVariants}
+              initial="hidden"
+              animate="visible"
+              whileHover={{ scale: 1.02, filter: "brightness(1.08)" }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => selectCategoryGroup(group.id)}
+              className="relative overflow-hidden rounded-3xl text-left shadow-xl focus:outline-none"
+              style={{ gridArea: areaMap[group.id], backgroundColor: color }}
+            >
+              <div className="absolute inset-0 flex flex-col justify-between p-6 z-10">
+                <div>
+                  <h2 className={`font-black text-black leading-tight drop-shadow-sm ${isTall ? "text-3xl" : "text-xl"}`}>
+                    {group.label}
+                  </h2>
+                  {dbCats.length > 0 && (
+                    <span className="mt-1 inline-block rounded-full bg-black/10 px-2 py-0.5 text-xs font-semibold text-black/60">
+                      {dbCats.length} {dbCats.length === 1 ? "subcategory" : "subcategories"}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-bold text-black/50 uppercase tracking-widest">Explore →</span>
+                </div>
+              </div>
+              <img
+                src={group.image}
+                alt={group.label}
+                className="absolute bottom-0 right-0 object-cover object-left-top pointer-events-none select-none"
+                style={{
+                  width: isTall ? "75%" : "65%",
+                  height: isTall ? "65%" : "70%",
+                  opacity: 0.92,
+                  maskImage: "radial-gradient(ellipse at bottom right, black 40%, transparent 80%)",
+                  WebkitMaskImage: "radial-gradient(ellipse at bottom right, black 40%, transparent 80%)",
+                }}
+                draggable={false}
+              />
+              <div
+                className="absolute inset-0 opacity-[0.07] pointer-events-none"
+                style={{ backgroundImage: "radial-gradient(circle, black 1px, transparent 1px)", backgroundSize: "20px 20px" }}
               />
             </motion.button>
           );

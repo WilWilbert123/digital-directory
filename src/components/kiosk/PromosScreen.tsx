@@ -69,23 +69,23 @@ export function PromosScreen() {
   const visible = PROMOS.slice(page * PER_PAGE, page * PER_PAGE + PER_PAGE);
 
   return (
-    <div className="h-full w-full flex flex-col pb-20 sm:pb-24 overflow-hidden">
+    <div className="h-full w-full flex flex-col pb-[72px] sm:pb-24 overflow-hidden">
       {/* Header */}
-      <div className="shrink-0 px-6 sm:px-10 py-5 sm:py-8">
+      <div className="shrink-0 px-4 sm:px-10 py-4 sm:py-8">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-400/20">
             <Tag className="h-5 w-5 text-orange-400" />
           </div>
           <div>
             <p className="text-xs font-bold uppercase tracking-widest opacity-40">Today&apos;s</p>
-            <h1 className="text-2xl sm:text-3xl font-black text-foreground">Promos & Deals</h1>
+            <h1 className="text-xl sm:text-3xl font-black text-foreground">Promos &amp; Deals</h1>
           </div>
         </div>
       </div>
 
       {/* Promo Grid */}
-      <div className="flex-1 overflow-y-auto no-scrollbar px-4 sm:px-8">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="flex-1 overflow-y-auto no-scrollbar px-6 sm:px-8">
+        <div className="grid grid-cols-2 sm:grid-cols-2 gap-3 sm:gap-4">
           {visible.map((promo, i) => (
             <motion.button
               key={promo.id}
@@ -94,7 +94,7 @@ export function PromosScreen() {
               whileHover={{ scale: 1.02, y: -2 }}
               whileTap={{ scale: 0.97 }}
               onClick={() => setActive(promo)}
-              className="relative overflow-hidden rounded-2xl sm:rounded-3xl text-left h-44 sm:h-52 p-5 shadow-xl"
+              className="relative overflow-hidden rounded-2xl sm:rounded-3xl text-left h-36 sm:h-52 p-4 sm:p-5 shadow-xl"
               style={{ backgroundColor: promo.color }}
             >
               {/* Brand + emoji */}

@@ -84,15 +84,15 @@ export function CinemaScreen() {
   const visible = MOVIES.slice(page * PER_PAGE, page * PER_PAGE + PER_PAGE);
 
   return (
-    <div className="h-full w-full flex flex-col pb-20 sm:pb-24 overflow-hidden">
+    <div className="h-full w-full flex flex-col pb-[72px] sm:pb-24 overflow-hidden">
       {/* Header */}
-      <div className="shrink-0 px-6 sm:px-10 py-5 sm:py-7 flex items-center gap-3">
+      <div className="shrink-0 px-4 sm:px-10 py-4 sm:py-7 flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-400/20">
           <Film className="h-5 w-5 text-purple-400" />
         </div>
         <div>
           <p className="text-xs font-bold uppercase tracking-widest opacity-40">Now Showing</p>
-          <h1 className="text-2xl sm:text-3xl font-black text-foreground">Cinema Guide</h1>
+          <h1 className="text-xl sm:text-3xl font-black text-foreground">Cinema Guide</h1>
         </div>
         <div className="ml-auto text-right">
           <p className="text-xs opacity-40">Today</p>
@@ -102,16 +102,16 @@ export function CinemaScreen() {
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 flex flex-col sm:flex-row gap-3 sm:gap-4 px-4 sm:px-8 overflow-hidden">
+      <div className="flex-1 min-h-0 flex flex-col sm:flex-row gap-3 sm:gap-4 px-3 sm:px-8 overflow-hidden">
         {/* Movie List */}
-        <div className="sm:w-56 shrink-0 overflow-y-auto no-scrollbar">
-          <div className="flex flex-col gap-2">
+        <div className="sm:w-56 shrink-0 overflow-x-auto sm:overflow-y-auto no-scrollbar">
+          <div className="flex sm:flex-col gap-2 pb-1 sm:pb-0">
             {visible.map((movie) => (
               <motion.button
                 key={movie.id}
                 whileTap={{ scale: 0.97 }}
                 onClick={() => { setSelectedMovie(movie); setSelectedTime(null); }}
-                className="flex items-center gap-3 rounded-2xl border p-3 text-left transition-all"
+                className="flex items-center gap-3 rounded-2xl border p-3 text-left transition-all min-w-[155px] sm:min-w-0"
                 style={
                   selectedMovie?.id === movie.id
                     ? { borderColor: `${movie.color}80`, background: `${movie.color}18` }
