@@ -188,7 +188,7 @@ export function MapView({
 
       {/* ── Navigation Bar (Google Maps style) ─────────────────────────── */}
       <div className="absolute bottom-16 sm:bottom-20 left-0 right-0 z-40 flex flex-col items-center px-3 sm:px-6">
-        <div className="flex w-full max-w-2xl items-stretch gap-0 rounded-xl sm:rounded-2xl border border-white/10 shadow-2xl bg-[#1a1a1a]">
+        <div className="flex w-full max-w-2xl items-stretch gap-0 rounded-xl sm:rounded-2xl border border-slate-200/90 shadow-xl bg-white/95 backdrop-blur-md">
 
           {/* LEFT — Input Destination tappable field */}
           <button
@@ -197,18 +197,18 @@ export function MapView({
               setDestQuery("");
               setDestModalOpen(true);
             }}
-            className="flex flex-1 items-center gap-2 sm:gap-3 px-3 sm:px-5 py-3 sm:py-4 text-left hover:bg-white/5 transition-colors min-w-0"
+            className="flex flex-1 items-center gap-2 sm:gap-3 px-3 sm:px-5 py-3 sm:py-4 text-left hover:bg-slate-100/60 transition-colors min-w-0"
           >
-            <Search className="h-4 w-4 sm:h-5 sm:w-5 text-white/40 shrink-0" />
+            <Search className="h-4 w-4 sm:h-5 sm:w-5 text-slate-400 shrink-0" />
             {destination ? (
-              <span className="text-xs sm:text-sm font-bold text-teal-400 truncate">{destination.tenantName}</span>
+              <span className="text-xs sm:text-sm font-bold text-teal-600 truncate">{destination.tenantName}</span>
             ) : (
-              <span className="text-xs sm:text-sm text-white/30 font-medium">Input Destination</span>
+              <span className="text-xs sm:text-sm text-slate-400 font-medium">Input Destination</span>
             )}
             {destination && (
               <button
                 onClick={(e) => { e.stopPropagation(); clearDestination(); }}
-                className="shrink-0 text-white/30 hover:text-white ml-auto"
+                className="shrink-0 text-slate-400 hover:text-slate-700 ml-auto"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
@@ -216,7 +216,7 @@ export function MapView({
           </button>
 
           {/* DIVIDER */}
-          <div className="w-px bg-white/10 my-2" />
+          <div className="w-px bg-slate-200 my-2" />
 
           {/* MIDDLE — Get Directions / Accessibility icons */}
           <div className="flex items-center px-2 sm:px-3 gap-1 sm:gap-2">
@@ -227,10 +227,10 @@ export function MapView({
               title="Get Directions"
               className={`flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-lg transition-all active:scale-95 disabled:opacity-50 shrink-0 shadow-sm ${
                 destination && !isAnimating
-                  ? "bg-teal-400 text-black hover:bg-teal-300 shadow-teal-500/20"
+                  ? "bg-teal-500 text-white hover:bg-teal-600 shadow-teal-500/20"
                   : isAnimating
                   ? "bg-emerald-500 text-white shadow-emerald-500/20 animate-pulse"
-                  : "bg-teal-400/90 text-black hover:bg-teal-300"
+                  : "bg-teal-500 text-white hover:bg-teal-600"
               }`}
             >
               <Navigation className="h-4 w-4 fill-current rotate-45" />
@@ -239,14 +239,14 @@ export function MapView({
             {/* Accessibility */}
             <button
               title="Accessible Route"
-              className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-lg bg-white/10 text-white/40 hover:bg-white/20 hover:text-white transition-all active:scale-95 shrink-0"
+              className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition-all active:scale-95 shrink-0"
             >
               <Accessibility className="h-4 w-4 sm:h-4 sm:w-4" />
             </button>
           </div>
 
           {/* DIVIDER */}
-          <div className="w-px bg-white/10 my-2" />
+          <div className="w-px bg-slate-200 my-2" />
 
           {/* RIGHT — Current KIOSK location + floor picker + zoom controls */}
           <div className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3">
@@ -254,14 +254,14 @@ export function MapView({
             <div className="relative">
               <button
                 onClick={() => setOriginDropdownOpen(!originDropdownOpen)}
-                className="flex items-center gap-1.5 rounded-lg bg-white/10 hover:bg-white/15 transition-colors px-2.5 py-1.5 sm:px-3 sm:py-2 group"
+                className="flex items-center gap-1.5 rounded-lg bg-slate-100 hover:bg-slate-200/80 transition-colors px-2.5 py-1.5 sm:px-3 sm:py-2 group"
                 title="Select Floor View"
               >
-                <MapPin className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-teal-400 shrink-0" />
-                <span className="text-[10px] sm:text-xs font-bold text-white whitespace-nowrap max-w-[90px] sm:max-w-[130px] truncate">
+                <MapPin className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-teal-600 shrink-0" />
+                <span className="text-[10px] sm:text-xs font-bold text-slate-800 whitespace-nowrap max-w-[90px] sm:max-w-[130px] truncate">
                   {kioskLabel}
                 </span>
-                <ChevronUp className={`h-3 w-3 text-white/50 group-hover:text-white transition-transform ${originDropdownOpen ? "rotate-180" : ""}`} />
+                <ChevronUp className={`h-3 w-3 text-slate-400 group-hover:text-slate-700 transition-transform ${originDropdownOpen ? "rotate-180" : ""}`} />
               </button>
 
               {/* Floor selector dropdown preview */}
@@ -271,11 +271,11 @@ export function MapView({
                     initial={{ opacity: 0, y: 8, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                    className="absolute bottom-full mb-3 right-0 rounded-2xl bg-[#141414] border border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.8)] overflow-hidden min-w-[170px] z-[100] p-1.5"
+                    className="absolute bottom-full mb-3 right-0 rounded-2xl bg-white border border-slate-200 shadow-2xl overflow-hidden min-w-[170px] z-[100] p-1.5"
                   >
-                    <p className="px-2.5 py-1.5 text-[9px] font-black uppercase tracking-widest text-teal-400 border-b border-white/10 flex items-center justify-between">
+                    <p className="px-2.5 py-1.5 text-[9px] font-black uppercase tracking-widest text-teal-600 border-b border-slate-100 flex items-center justify-between">
                       <span>All Floors</span>
-                      <span className="text-[8px] text-white/40 font-normal">Switch View</span>
+                      <span className="text-[8px] text-slate-400 font-normal">Switch View</span>
                     </p>
                     <div className="flex flex-col gap-1 mt-1 max-h-56 overflow-y-auto no-scrollbar">
                       {floors.map((lvl) => (
@@ -284,16 +284,16 @@ export function MapView({
                           onClick={() => { setOriginFloor(lvl); setOriginDropdownOpen(false); }}
                           className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs font-bold transition-all ${
                             originFloor === lvl 
-                              ? "bg-teal-400 text-black shadow-md font-black" 
-                              : "text-white/80 hover:bg-white/10 hover:text-white"
+                              ? "bg-teal-500 text-white shadow-md font-black" 
+                              : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
                           }`}
                         >
                           <div className="flex items-center gap-2">
-                            <MapPin className={`h-3.5 w-3.5 ${originFloor === lvl ? "text-black" : "text-teal-400"}`} />
+                            <MapPin className={`h-3.5 w-3.5 ${originFloor === lvl ? "text-white" : "text-teal-600"}`} />
                             <span>Floor {lvl}</span>
                           </div>
                           {originFloor === lvl && (
-                            <span className="text-[9px] font-black uppercase bg-black/20 px-1.5 py-0.5 rounded-md text-black">Active</span>
+                            <span className="text-[9px] font-black uppercase bg-white/20 px-1.5 py-0.5 rounded-md text-white">Active</span>
                           )}
                         </button>
                       ))}
@@ -307,7 +307,7 @@ export function MapView({
             <button
               onClick={() => window.dispatchEvent(new CustomEvent("kiosk-map-zoom-out"))}
               title="Zoom Out"
-              className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-white/10 text-white/60 hover:bg-white/20 hover:text-white transition-all active:scale-90"
+              className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition-all active:scale-90"
             >
               <ZoomOut className="h-3.5 w-3.5" />
             </button>
@@ -316,7 +316,7 @@ export function MapView({
             <button
               onClick={() => window.dispatchEvent(new CustomEvent("kiosk-map-zoom-in"))}
               title="Zoom In"
-              className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-white/10 text-white/60 hover:bg-white/20 hover:text-white transition-all active:scale-90"
+              className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition-all active:scale-90"
             >
               <ZoomIn className="h-3.5 w-3.5" />
             </button>
@@ -325,7 +325,7 @@ export function MapView({
             <button
               onClick={() => window.dispatchEvent(new CustomEvent("kiosk-map-reset"))}
               title="Reset View"
-              className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-white/10 text-white/60 hover:bg-white/20 hover:text-white transition-all active:scale-90"
+              className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition-all active:scale-90"
             >
               <Maximize2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
             </button>
