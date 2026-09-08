@@ -3,6 +3,8 @@
 import { create } from "zustand";
 import type { PathResult } from "@/lib/pathfinding";
 
+export type KioskView = "home" | "search" | "map" | "promos" | "cinema";
+
 export type KioskTenant = {
   id: string;
   tenantCode: string;
@@ -17,34 +19,68 @@ export type KioskTenant = {
 };
 
 type KioskState = {
+  // Search / query
   query: string;
   categoryId: string | null;
+  keyboardOpen: boolean;
+
+  // Navigation
+  activeView: KioskView;
+  selectedCategoryGroup: string | null;   // e.g. "food", "fashion"
+  selectedSubcategoryId: string | null;   // DB category ID
+
+  // Wayfinding
   selectedTenantId: string | null;
   startNodeId: string | null;
   route: PathResult | null;
+
+  // Idle / screensaver
   idleSeconds: number;
-  keyboardOpen: boolean;
+
+  // Actions — search
   setQuery: (q: string) => void;
   appendKey: (key: string) => void;
   backspace: () => void;
   clearQuery: () => void;
   setCategoryId: (id: string | null) => void;
+  setKeyboardOpen: (open: boolean) => void;
+
+  // Actions — navigation
+  setActiveView: (view: KioskView) => void;
+  selectCategoryGroup: (group: string | null) => void;
+  selectSubcategory: (id: string | null) => void;
+  goHome: () => void;
+
+  // Actions — wayfinding
   setSelectedTenant: (id: string | null) => void;
   setStartNodeId: (id: string | null) => void;
   setRoute: (route: PathResult | null) => void;
+
+  // Actions — idle
   tickIdle: () => void;
   resetIdle: () => void;
-  setKeyboardOpen: (open: boolean) => void;
 };
 
 export const useKioskStore = create<KioskState>((set) => ({
+  // Search
   query: "",
   categoryId: null,
+  keyboardOpen: false,
+
+  // Navigation
+  activeView: "home",
+  selectedCategoryGroup: null,
+  selectedSubcategoryId: null,
+
+  // Wayfinding
   selectedTenantId: null,
   startNodeId: process.env.NEXT_PUBLIC_DEFAULT_START_NODE ?? null,
   route: null,
+
+  // Idle
   idleSeconds: 0,
-  keyboardOpen: false,
+
+  // Search actions
   setQuery: (query) => set({ query, idleSeconds: 0 }),
   appendKey: (key) =>
     set((s) => ({
@@ -54,10 +90,24 @@ export const useKioskStore = create<KioskState>((set) => ({
   backspace: () => set((s) => ({ query: s.query.slice(0, -1), idleSeconds: 0 })),
   clearQuery: () => set({ query: "", idleSeconds: 0 }),
   setCategoryId: (categoryId) => set({ categoryId, idleSeconds: 0 }),
+  setKeyboardOpen: (keyboardOpen) => set({ keyboardOpen, idleSeconds: 0 }),
+
+  // Navigation actions
+  setActiveView: (activeView) =>
+    set({ activeView, selectedCategoryGroup: null, selectedSubcategoryId: null, idleSeconds: 0 }),
+  selectCategoryGroup: (selectedCategoryGroup) =>
+    set({ selectedCategoryGroup, selectedSubcategoryId: null, idleSeconds: 0 }),
+  selectSubcategory: (selectedSubcategoryId) =>
+    set({ selectedSubcategoryId, idleSeconds: 0 }),
+  goHome: () =>
+    set({ activeView: "home", selectedCategoryGroup: null, selectedSubcategoryId: null, idleSeconds: 0 }),
+
+  // Wayfinding actions
   setSelectedTenant: (selectedTenantId) => set({ selectedTenantId, idleSeconds: 0 }),
   setStartNodeId: (startNodeId) => set({ startNodeId }),
   setRoute: (route) => set({ route }),
+
+  // Idle actions
   tickIdle: () => set((s) => ({ idleSeconds: s.idleSeconds + 1 })),
   resetIdle: () => set({ idleSeconds: 0 }),
-  setKeyboardOpen: (keyboardOpen) => set({ keyboardOpen, idleSeconds: 0 }),
 }));
