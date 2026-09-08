@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import dynamic from "next/dynamic";
-import { Search, X, MapPin, ChevronUp, Accessibility, ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
+import { Search, X, MapPin, ChevronUp, Accessibility, ZoomIn, ZoomOut, Maximize2, Navigation } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useKioskStore, type KioskTenant } from "@/store/useKioskStore";
 import { computeRouteAction } from "@/app/actions/kiosk";
@@ -45,6 +45,7 @@ export function MapView({
   const [route, setRoute] = useState<PathResult | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
   const [isLoadingRoute, setIsLoadingRoute] = useState(false);
+  const [proceedSignal, setProceedSignal] = useState(0);
 
   // ── Floors list ──────────────────────────────────────────────────────────
   const floors = useMemo<number[]>(() => {
@@ -73,6 +74,41 @@ export function MapView({
   // Sync with global store query for virtual keyboard input
   const storeQuery = useKioskStore((s) => s.query);
   const setStoreQuery = useKioskStore((s) => s.setQuery);
+  const autoOpenSearch = useKioskStore((s) => s.autoOpenSearch);
+  const setAutoOpenSearch = useKioskStore((s) => s.setAutoOpenSearch);
+  const storeDestinationTenant = useKioskStore((s) => s.destinationTenant);
+  const setStoreDestinationTenant = useKioskStore((s) => s.setDestinationTenant);
+
+  // Auto-open destination search if user clicked "Search" tab
+  useEffect(() => {
+    if (autoOpenSearch) {
+      setDestModalOpen(true);
+      setDestQuery("");
+      setStoreQuery("");
+      setAutoOpenSearch(false);
+    }
+  }, [autoOpenSearch, setStoreQuery, setAutoOpenSearch]);
+
+  // When a store destination is passed from TenantList directions click
+  useEffect(() => {
+    if (storeDestinationTenant) {
+      setDestination(storeDestinationTenant);
+      setDestModalOpen(false);
+      setStoreDestinationTenant(null);
+
+      // Trigger route computation from current kiosk location to store
+      const startId = kioskNodesByFloor[originFloor] ?? defaultStartNodeId;
+      if (startId && storeDestinationTenant.entranceNodeId) {
+        setIsLoadingRoute(true);
+        computeRouteAction(startId, storeDestinationTenant.entranceNodeId)
+          .then((res) => {
+            setRoute(res);
+            if (res?.found) setIsAnimating(true);
+          })
+          .finally(() => setIsLoadingRoute(false));
+      }
+    }
+  }, [storeDestinationTenant, kioskNodesByFloor, originFloor, defaultStartNodeId, setStoreDestinationTenant]);
 
   // Sync store query to destQuery when modal is open
   useEffect(() => {
@@ -102,9 +138,12 @@ export function MapView({
     if (!originNodeId || !destination?.entranceNodeId) return;
     setIsLoadingRoute(true);
     try {
+      setIsAnimating(false);
       const result = await computeRouteAction(originNodeId, destination.entranceNodeId);
       setRoute(result);
-      if (result?.found) setIsAnimating(true);
+      if (result?.found) {
+        setTimeout(() => setIsAnimating(true), 20);
+      }
     } finally {
       setIsLoadingRoute(false);
     }
@@ -137,16 +176,19 @@ export function MapView({
         nodes={nodes}
         route={route}
         floorsData={floorsData}
+        selectedFloor={originFloor}
+        onLevelChange={(lvl) => setOriginFloor(lvl)}
         isPlayingAnimation={isAnimating}
+        onProceed={() => setProceedSignal(s => s + 1)}
+        proceedSignal={proceedSignal}
         onAnimationComplete={() => {
-          setIsAnimating(false);
-          setTimeout(() => setIsAnimating(true), 2000);
+          // Animation complete - TourGuide stops at destination floor without looping back to start
         }}
       />
 
       {/* ── Navigation Bar (Google Maps style) ─────────────────────────── */}
-      <div className="absolute bottom-16 sm:bottom-20 left-0 right-0 z-20 flex flex-col items-center px-3 sm:px-6">
-        <div className="flex w-full max-w-2xl items-stretch gap-0 rounded-xl sm:rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-[#1a1a1a]">
+      <div className="absolute bottom-16 sm:bottom-20 left-0 right-0 z-40 flex flex-col items-center px-3 sm:px-6">
+        <div className="flex w-full max-w-2xl items-stretch gap-0 rounded-xl sm:rounded-2xl border border-white/10 shadow-2xl bg-[#1a1a1a]">
 
           {/* LEFT — Input Destination tappable field */}
           <button
@@ -176,28 +218,28 @@ export function MapView({
           {/* DIVIDER */}
           <div className="w-px bg-white/10 my-2" />
 
-          {/* MIDDLE — Route up / Accessibility icons */}
+          {/* MIDDLE — Get Directions / Accessibility icons */}
           <div className="flex items-center px-2 sm:px-3 gap-1 sm:gap-2">
-            {/* Route up — triggers get directions */}
+            {/* Direction icon button */}
             <button
               onClick={destination ? handleGetDirections : () => { setDestModalOpen(true); setDestQuery(""); }}
               disabled={isLoadingRoute}
               title="Get Directions"
-              className={`flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-lg transition-all active:scale-95 disabled:opacity-50 ${
+              className={`flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-lg transition-all active:scale-95 disabled:opacity-50 shrink-0 shadow-sm ${
                 destination && !isAnimating
-                  ? "bg-teal-400 text-black hover:bg-teal-300"
+                  ? "bg-teal-400 text-black hover:bg-teal-300 shadow-teal-500/20"
                   : isAnimating
-                  ? "bg-emerald-500 text-white"
-                  : "bg-white/10 text-white/50 hover:bg-white/20 hover:text-white"
+                  ? "bg-emerald-500 text-white shadow-emerald-500/20 animate-pulse"
+                  : "bg-teal-400/90 text-black hover:bg-teal-300"
               }`}
             >
-              <ChevronUp className="h-4 w-4 sm:h-5 sm:w-5" />
+              <Navigation className="h-4 w-4 fill-current rotate-45" />
             </button>
 
             {/* Accessibility */}
             <button
               title="Accessible Route"
-              className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-lg bg-white/10 text-white/40 hover:bg-white/20 hover:text-white transition-all active:scale-95"
+              className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-lg bg-white/10 text-white/40 hover:bg-white/20 hover:text-white transition-all active:scale-95 shrink-0"
             >
               <Accessibility className="h-4 w-4 sm:h-4 sm:w-4" />
             </button>
@@ -229,20 +271,20 @@ export function MapView({
                     initial={{ opacity: 0, y: 8, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                    className="absolute bottom-full mb-2 right-0 rounded-2xl bg-[#141414] border border-white/15 shadow-2xl overflow-hidden min-w-[160px] z-50 p-1.5"
+                    className="absolute bottom-full mb-3 right-0 rounded-2xl bg-[#141414] border border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.8)] overflow-hidden min-w-[170px] z-[100] p-1.5"
                   >
                     <p className="px-2.5 py-1.5 text-[9px] font-black uppercase tracking-widest text-teal-400 border-b border-white/10 flex items-center justify-between">
-                      <span>Select Floor</span>
-                      <span className="text-[8px] text-white/40 font-normal">Preview</span>
+                      <span>All Floors</span>
+                      <span className="text-[8px] text-white/40 font-normal">Switch View</span>
                     </p>
-                    <div className="flex flex-col gap-1 mt-1">
+                    <div className="flex flex-col gap-1 mt-1 max-h-56 overflow-y-auto no-scrollbar">
                       {floors.map((lvl) => (
                         <button
                           key={lvl}
                           onClick={() => { setOriginFloor(lvl); setOriginDropdownOpen(false); }}
                           className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs font-bold transition-all ${
                             originFloor === lvl 
-                              ? "bg-teal-400 text-black shadow-md" 
+                              ? "bg-teal-400 text-black shadow-md font-black" 
                               : "text-white/80 hover:bg-white/10 hover:text-white"
                           }`}
                         >
@@ -263,24 +305,27 @@ export function MapView({
 
             {/* Zoom out */}
             <button
+              onClick={() => window.dispatchEvent(new CustomEvent("kiosk-map-zoom-out"))}
               title="Zoom Out"
-              className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-white/10 text-white/40 hover:bg-white/20 hover:text-white transition-all active:scale-95"
+              className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-white/10 text-white/60 hover:bg-white/20 hover:text-white transition-all active:scale-90"
             >
               <ZoomOut className="h-3.5 w-3.5" />
             </button>
 
             {/* Zoom in */}
             <button
+              onClick={() => window.dispatchEvent(new CustomEvent("kiosk-map-zoom-in"))}
               title="Zoom In"
-              className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-white/10 text-white/40 hover:bg-white/20 hover:text-white transition-all active:scale-95"
+              className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-white/10 text-white/60 hover:bg-white/20 hover:text-white transition-all active:scale-90"
             >
               <ZoomIn className="h-3.5 w-3.5" />
             </button>
 
-            {/* Fullscreen */}
+            {/* Reset view */}
             <button
-              title="Expand Map"
-              className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-white/10 text-white/40 hover:bg-white/20 hover:text-white transition-all active:scale-95"
+              onClick={() => window.dispatchEvent(new CustomEvent("kiosk-map-reset"))}
+              title="Reset View"
+              className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-white/10 text-white/60 hover:bg-white/20 hover:text-white transition-all active:scale-90"
             >
               <Maximize2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
             </button>
@@ -303,6 +348,7 @@ export function MapView({
           )}
         </AnimatePresence>
       </div>
+
 
       {/* ── Destination Search Overlay — compact dropdown + centered keyboard ── */}
       <AnimatePresence>

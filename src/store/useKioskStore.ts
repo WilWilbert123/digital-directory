@@ -29,7 +29,9 @@ type KioskState = {
   selectedCategoryGroup: string | null;   // e.g. "food", "fashion"
   selectedSubcategoryId: string | null;   // DB category ID
 
-  // Wayfinding
+  // Wayfinding & Destination in Map
+  destinationTenant: KioskTenant | null;
+  autoOpenSearch: boolean;
   selectedTenantId: string | null;
   startNodeId: string | null;
   route: PathResult | null;
@@ -50,8 +52,12 @@ type KioskState = {
   selectCategoryGroup: (group: string | null) => void;
   selectSubcategory: (id: string | null) => void;
   goHome: () => void;
+  openMapWithSearch: () => void;
+  openMapWithDestination: (tenant: KioskTenant) => void;
 
   // Actions — wayfinding
+  setDestinationTenant: (tenant: KioskTenant | null) => void;
+  setAutoOpenSearch: (open: boolean) => void;
   setSelectedTenant: (id: string | null) => void;
   setStartNodeId: (id: string | null) => void;
   setRoute: (route: PathResult | null) => void;
@@ -73,6 +79,8 @@ export const useKioskStore = create<KioskState>((set) => ({
   selectedSubcategoryId: null,
 
   // Wayfinding
+  destinationTenant: null,
+  autoOpenSearch: false,
   selectedTenantId: null,
   startNodeId: process.env.NEXT_PUBLIC_DEFAULT_START_NODE ?? null,
   route: null,
@@ -100,9 +108,15 @@ export const useKioskStore = create<KioskState>((set) => ({
   selectSubcategory: (selectedSubcategoryId) =>
     set({ selectedSubcategoryId, idleSeconds: 0 }),
   goHome: () =>
-    set({ activeView: "home", selectedCategoryGroup: null, selectedSubcategoryId: null, idleSeconds: 0 }),
+    set({ activeView: "home", selectedCategoryGroup: null, selectedSubcategoryId: null, selectedTenantId: null, idleSeconds: 0 }),
+  openMapWithSearch: () =>
+    set({ activeView: "map", autoOpenSearch: true, selectedCategoryGroup: null, selectedSubcategoryId: null, selectedTenantId: null, idleSeconds: 0 }),
+  openMapWithDestination: (destinationTenant) =>
+    set({ activeView: "map", destinationTenant, autoOpenSearch: false, selectedCategoryGroup: null, selectedSubcategoryId: null, selectedTenantId: null, idleSeconds: 0 }),
 
   // Wayfinding actions
+  setDestinationTenant: (destinationTenant) => set({ destinationTenant, idleSeconds: 0 }),
+  setAutoOpenSearch: (autoOpenSearch) => set({ autoOpenSearch }),
   setSelectedTenant: (selectedTenantId) => set({ selectedTenantId, idleSeconds: 0 }),
   setStartNodeId: (startNodeId) => set({ startNodeId }),
   setRoute: (route) => set({ route }),
